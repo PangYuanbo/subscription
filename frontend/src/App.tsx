@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import SubscriptionTable from '@/components/SubscriptionTable';
 import SubscriptionForm from '@/components/SubscriptionForm';
 import Analytics from '@/components/Analytics';
-import { Subscription, Analytics as AnalyticsData } from '@/types';
+import type { Subscription, Analytics as AnalyticsData } from '@/types';
 import { subscriptionApi } from '@/api/client';
 
 const MOCK_SUBSCRIPTIONS: Subscription[] = [

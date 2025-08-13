@@ -15,7 +15,7 @@ import {
   Cell,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Analytics as AnalyticsData } from '@/types';
+import type { Analytics as AnalyticsData } from '@/types';
 
 interface AnalyticsProps {
   data: AnalyticsData;

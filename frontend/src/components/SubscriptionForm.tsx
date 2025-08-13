@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Subscription, Service } from '@/types';
+import type { Subscription, Service } from '@/types';
 import {
   Dialog,
   DialogContent,
