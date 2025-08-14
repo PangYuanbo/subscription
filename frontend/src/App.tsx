@@ -4,6 +4,7 @@ import SubscriptionTable from '@/components/SubscriptionTable';
 import SubscriptionForm from '@/components/SubscriptionForm';
 import Analytics from '@/components/Analytics';
 import IconGallery from '@/components/IconGallery';
+import TrialOverview from '@/components/TrialOverview';
 import type { Subscription, Analytics as AnalyticsData } from '@/types';
 import { subscriptionApi } from '@/api/client';
 
@@ -23,6 +24,10 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
     account: 'user@example.com',
     payment_date: '2024-01-10',
     monthly_cost: 9.99,
+    is_trial: true,
+    trial_start_date: '2024-12-01',
+    trial_end_date: '2024-12-31',
+    trial_duration_days: 30,
   },
   {
     id: '3',
@@ -31,6 +36,10 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
     account: 'dev@example.com',
     payment_date: '2024-01-01',
     monthly_cost: 7.00,
+    is_trial: true,
+    trial_start_date: '2024-12-10',
+    trial_end_date: '2024-12-17',
+    trial_duration_days: 7,
   },
   {
     id: '4',
@@ -47,6 +56,10 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
     account: 'test@example.com',
     payment_date: '2024-01-05',
     monthly_cost: 25.00,
+    is_trial: true,
+    trial_start_date: '2024-12-05',
+    trial_end_date: '2024-12-19',
+    trial_duration_days: 14,
   },
 ];
 
@@ -199,18 +212,29 @@ function App() {
             </p>
           </div>
 
-          {(activeSection === 'dashboard' || activeSection === 'subscriptions') && (
-            <div className="mb-8">
+          {activeSection === 'dashboard' && (
+            <div className="space-y-8">
+              <TrialOverview subscriptions={subscriptions} />
               <SubscriptionTable
                 subscriptions={subscriptions}
                 onEdit={handleEditSubscription}
                 onDelete={handleDeleteSubscription}
                 onAdd={handleAddSubscription}
               />
+              {analytics && <Analytics data={analytics} />}
             </div>
           )}
 
-          {(activeSection === 'dashboard' || activeSection === 'analytics') && analytics && (
+          {activeSection === 'subscriptions' && (
+            <SubscriptionTable
+              subscriptions={subscriptions}
+              onEdit={handleEditSubscription}
+              onDelete={handleDeleteSubscription}
+              onAdd={handleAddSubscription}
+            />
+          )}
+
+          {activeSection === 'analytics' && analytics && (
             <Analytics data={analytics} />
           )}
 
@@ -239,7 +263,15 @@ function App() {
                 </div>
               </div>
               
-              <IconGallery />
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">图标系统</h2>
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p>• 应用包含50+预定义热门服务商图标</p>
+                  <p>• 自定义服务自动生成首字母图标</p>
+                  <p>• 支持中英文服务名称</p>
+                  <p>• 颜色根据服务名称确定，保证一致性</p>
+                </div>
+              </div>
             </div>
           )}
         </div>

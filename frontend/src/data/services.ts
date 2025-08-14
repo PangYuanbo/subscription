@@ -98,21 +98,15 @@ export const generateInitialIcon = (serviceName: string, color?: string): string
   const bgColor = color || getRandomColor(serviceName);
   const textColor = getContrastColor(bgColor);
   
-  // 创建SVG数据URL
-  const svg = `
-    <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
-      <rect width="40" height="40" rx="8" fill="${bgColor}"/>
-      <text x="20" y="26" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="${textColor}">
-        ${initial}
-      </text>
-    </svg>
-  `;
+  // 创建SVG字符串并编码为数据URL
+  const svg = `<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="8" fill="${bgColor}"/><text x="20" y="26" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="${textColor}">${initial}</text></svg>`;
   
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+  // 使用URL编码而不是base64，更安全
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 };
 
 // 根据字符串生成固定的颜色
-const getRandomColor = (str: string): string => {
+export const getRandomColor = (str: string): string => {
   const colors = [
     '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899',
     '#06B6D4', '#84CC16', '#F97316', '#6366F1', '#14B8A6', '#F472B6',
@@ -128,7 +122,7 @@ const getRandomColor = (str: string): string => {
 };
 
 // 根据背景色计算对比色
-const getContrastColor = (hexColor: string): string => {
+export const getContrastColor = (hexColor: string): string => {
   // 移除 # 号
   const hex = hexColor.replace('#', '');
   

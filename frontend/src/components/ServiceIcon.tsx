@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getServiceIcon } from '@/data/services';
+import { findServiceByName, getRandomColor, getContrastColor } from '@/data/services';
 
 interface ServiceIconProps {
   serviceName: string;
@@ -8,6 +8,7 @@ interface ServiceIconProps {
   fallbackColor?: string;
 }
 
+// 简化版本，直接渲染SVG而不使用数据URL
 const ServiceIcon: React.FC<ServiceIconProps> = ({ 
   serviceName, 
   size = 32, 
@@ -15,45 +16,47 @@ const ServiceIcon: React.FC<ServiceIconProps> = ({
   fallbackColor 
 }) => {
   const [imageError, setImageError] = useState(false);
-  const iconUrl = getServiceIcon(serviceName, fallbackColor);
+  const predefinedService = findServiceByName(serviceName);
   
-  // 如果是数据URL（生成的SVG），直接显示
-  if (iconUrl.startsWith('data:')) {
+  // 如果有预定义服务且图片未加载失败，显示预定义图标
+  if (predefinedService?.icon_url && !imageError) {
     return (
       <img
-        src={iconUrl}
+        src={predefinedService.icon_url}
         alt={serviceName}
         width={size}
         height={size}
         className={`rounded-lg ${className}`}
+        onError={() => setImageError(true)}
       />
     );
   }
   
-  // 如果是外部URL，处理加载错误
-  if (imageError) {
-    // 如果外部图片加载失败，使用生成的首字母图标
-    const fallbackIcon = getServiceIcon(serviceName, fallbackColor);
-    return (
-      <img
-        src={fallbackIcon}
-        alt={serviceName}
-        width={size}
-        height={size}
-        className={`rounded-lg ${className}`}
-      />
-    );
-  }
+  // 生成首字母图标 (直接渲染SVG)
+  const initial = serviceName.charAt(0).toUpperCase();
+  const bgColor = predefinedService?.color || fallbackColor || getRandomColor(serviceName);
+  const textColor = getContrastColor(bgColor);
   
   return (
-    <img
-      src={iconUrl}
-      alt={serviceName}
-      width={size}
-      height={size}
+    <svg 
+      width={size} 
+      height={size} 
       className={`rounded-lg ${className}`}
-      onError={() => setImageError(true)}
-    />
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect width={size} height={size} rx="6" fill={bgColor}/>
+      <text 
+        x={size/2} 
+        y={size/2 + size/8} 
+        fontFamily="Arial, sans-serif" 
+        fontSize={size/2.2} 
+        fontWeight="bold" 
+        textAnchor="middle" 
+        fill={textColor}
+      >
+        {initial}
+      </text>
+    </svg>
   );
 };
 

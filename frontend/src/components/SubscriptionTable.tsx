@@ -3,6 +3,7 @@ import type { Subscription } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ServiceIcon from '@/components/ServiceIcon';
+import TrialStatus from '@/components/TrialStatus';
 import { 
   Pencil, 
   Trash2, 
@@ -119,6 +120,9 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
               </th>
+              <th className="px-6 py-3 text-left">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Trial Status</span>
+              </th>
               <th className="px-6 py-3 text-right">
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</span>
               </th>
@@ -151,6 +155,9 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
                   <span className="text-sm font-semibold text-gray-900">
                     ${subscription.monthly_cost.toFixed(2)}
                   </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <TrialStatus subscription={subscription} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   <div className="flex items-center justify-end space-x-2">

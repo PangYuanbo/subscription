@@ -14,6 +14,11 @@ export interface Subscription {
   monthly_cost: number;
   created_at?: string;
   updated_at?: string;
+  // 免费试用相关字段
+  trial_start_date?: string;
+  trial_end_date?: string;
+  trial_duration_days?: number;
+  is_trial?: boolean;
 }
 
 export interface Analytics {

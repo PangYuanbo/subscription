@@ -6,6 +6,11 @@ A full-stack web application for managing and tracking subscription services wit
 
 - **Dashboard Overview**: View all active subscriptions at a glance
 - **Subscription Management**: Add, edit, and delete subscription services
+- **Free Trial Tracking**: 
+  - Track trial periods with start/end dates
+  - Visual status indicators for active, expiring, and expired trials
+  - Dashboard alerts for trials expiring soon
+  - Support for common trial durations (7, 14, 30, 60, 90 days)
 - **Smart Icon System**: 
   - 50+ predefined service provider icons
   - Automatic initial letter icon generation for custom services

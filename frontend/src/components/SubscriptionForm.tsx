@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ServiceIcon from '@/components/ServiceIcon';
 import { PREDEFINED_SERVICES } from '@/data/services';
+import { getCommonTrialDurations, calculateTrialEndDate } from '@/utils/trialUtils';
 
 interface SubscriptionFormProps {
   isOpen: boolean;
@@ -35,6 +36,9 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
     account: '',
     payment_date: '',
     monthly_cost: 0,
+    is_trial: false,
+    trial_start_date: '',
+    trial_duration_days: 30,
   });
   const [customServiceName, setCustomServiceName] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -46,6 +50,9 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         account: subscription.account,
         payment_date: subscription.payment_date,
         monthly_cost: subscription.monthly_cost,
+        is_trial: subscription.is_trial || false,
+        trial_start_date: subscription.trial_start_date || '',
+        trial_duration_days: subscription.trial_duration_days || 30,
       });
     } else {
       setFormData({
@@ -53,6 +60,9 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         account: '',
         payment_date: new Date().toISOString().split('T')[0],
         monthly_cost: 0,
+        is_trial: false,
+        trial_start_date: new Date().toISOString().split('T')[0],
+        trial_duration_days: 30,
       });
     }
   }, [subscription]);
@@ -79,10 +89,20 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
       service = PREDEFINED_SERVICES.find(s => s.id === formData.service_id);
     }
     
-    onSubmit({
+    let submissionData = {
       ...formData,
       service,
-    });
+    };
+
+    // 如果是试用期，计算结束日期
+    if (formData.is_trial && formData.trial_start_date) {
+      submissionData.trial_end_date = calculateTrialEndDate(
+        formData.trial_start_date, 
+        formData.trial_duration_days
+      );
+    }
+    
+    onSubmit(submissionData);
     onClose();
   };
 
@@ -200,6 +220,78 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
                 required
               />
             </div>
+
+            {/* 试用期设置 */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">
+                Trial Period
+              </Label>
+              <div className="col-span-3">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_trial}
+                    onChange={(e) =>
+                      setFormData({ ...formData, is_trial: e.target.checked })
+                    }
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-gray-700">
+                    This subscription has a free trial
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* 试用期详细设置 */}
+            {formData.is_trial && (
+              <>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="trial_start_date" className="text-right">
+                    Trial Start
+                  </Label>
+                  <Input
+                    id="trial_start_date"
+                    type="date"
+                    className="col-span-3"
+                    value={formData.trial_start_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, trial_start_date: e.target.value })
+                    }
+                    required={formData.is_trial}
+                  />
+                </div>
+
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="trial_duration" className="text-right">
+                    Trial Duration
+                  </Label>
+                  <div className="col-span-3 space-y-2">
+                    <select
+                      id="trial_duration"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={formData.trial_duration_days}
+                      onChange={(e) =>
+                        setFormData({ ...formData, trial_duration_days: parseInt(e.target.value) })
+                      }
+                    >
+                      {getCommonTrialDurations().map((duration) => (
+                        <option key={duration.days} value={duration.days}>
+                          {duration.label}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    {/* 显示计算出的结束日期 */}
+                    {formData.trial_start_date && (
+                      <div className="text-xs text-gray-600">
+                        Trial ends: {calculateTrialEndDate(formData.trial_start_date, formData.trial_duration_days)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
