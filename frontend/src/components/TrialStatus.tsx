@@ -1,5 +1,5 @@
 import React from 'react';
-import { Subscription } from '@/types';
+import type { Subscription } from '@/types';
 import { calculateTrialStatus, formatTrialPeriod } from '@/utils/trialUtils';
 import { Clock, Calendar, AlertTriangle } from 'lucide-react';
 

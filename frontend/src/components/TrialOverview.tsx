@@ -1,5 +1,5 @@
 import React from 'react';
-import { Subscription } from '@/types';
+import type { Subscription } from '@/types';
 import { calculateTrialStatus } from '@/utils/trialUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ServiceIcon from '@/components/ServiceIcon';

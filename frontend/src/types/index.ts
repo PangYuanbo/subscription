@@ -1,7 +1,7 @@
 export interface Service {
   id: string;
   name: string;
-  icon_url: string;
+  icon_url?: string;
   category: string;
 }
 

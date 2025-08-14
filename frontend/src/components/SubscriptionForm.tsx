@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Subscription, Service } from '@/types';
+import type { Subscription } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -89,7 +89,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
       service = PREDEFINED_SERVICES.find(s => s.id === formData.service_id);
     }
     
-    let submissionData = {
+    let submissionData: any = {
       ...formData,
       service,
     };
