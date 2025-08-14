@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { Subscription } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ServiceIcon from '@/components/ServiceIcon';
 import { 
   Pencil, 
   Trash2, 
@@ -128,13 +129,11 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
               <tr key={subscription.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    {subscription.service?.icon_url && (
-                      <img
-                        src={subscription.service.icon_url}
-                        alt={subscription.service.name}
-                        className="h-8 w-8 rounded-full mr-3"
-                      />
-                    )}
+                    <ServiceIcon 
+                      serviceName={subscription.service?.name || 'Unknown'} 
+                      size={32}
+                      className="mr-3"
+                    />
                     <span className="text-sm font-medium text-gray-900">
                       {subscription.service?.name}
                     </span>

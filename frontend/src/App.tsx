@@ -3,41 +3,50 @@ import Sidebar from '@/components/Sidebar';
 import SubscriptionTable from '@/components/SubscriptionTable';
 import SubscriptionForm from '@/components/SubscriptionForm';
 import Analytics from '@/components/Analytics';
+import IconGallery from '@/components/IconGallery';
 import type { Subscription, Analytics as AnalyticsData } from '@/types';
 import { subscriptionApi } from '@/api/client';
 
 const MOCK_SUBSCRIPTIONS: Subscription[] = [
   {
     id: '1',
-    service_id: '1',
-    service: { id: '1', name: 'Netflix', icon_url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/netflix/netflix-original.svg', category: 'Entertainment' },
+    service_id: 'netflix',
+    service: { id: 'netflix', name: 'Netflix', category: 'Entertainment' },
     account: 'family@example.com',
     payment_date: '2024-01-15',
     monthly_cost: 19.99,
   },
   {
     id: '2',
-    service_id: '2',
-    service: { id: '2', name: 'Spotify', icon_url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/spotify/spotify-original.svg', category: 'Entertainment' },
+    service_id: 'spotify',
+    service: { id: 'spotify', name: 'Spotify', category: 'Entertainment' },
     account: 'user@example.com',
     payment_date: '2024-01-10',
     monthly_cost: 9.99,
   },
   {
     id: '3',
-    service_id: '3',
-    service: { id: '3', name: 'GitHub', icon_url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg', category: 'Development' },
+    service_id: 'github',
+    service: { id: 'github', name: 'GitHub', category: 'Development' },
     account: 'dev@example.com',
     payment_date: '2024-01-01',
     monthly_cost: 7.00,
   },
   {
     id: '4',
-    service_id: '4',
-    service: { id: '4', name: 'AWS', icon_url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original.svg', category: 'Cloud' },
+    service_id: 'aws',
+    service: { id: 'aws', name: 'Amazon Web Services', category: 'Cloud' },
     account: 'admin@company.com',
     payment_date: '2024-01-01',
     monthly_cost: 150.00,
+  },
+  {
+    id: '5',
+    service_id: 'custom',
+    service: { id: 'custom', name: '自定义服务', category: 'Other' },
+    account: 'test@example.com',
+    payment_date: '2024-01-05',
+    monthly_cost: 25.00,
   },
 ];
 
@@ -206,27 +215,31 @@ function App() {
           )}
 
           {activeSection === 'settings' && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Settings</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={useApi}
-                      onChange={(e) => setUseApi(e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Use Backend API (requires backend server running)
-                    </span>
-                  </label>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <p>API URL: {import.meta.env.VITE_API_URL || 'http://localhost:8000'}</p>
-                  <p>Data Storage: {useApi ? 'Remote Database' : 'Local Storage'}</p>
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">应用设置</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={useApi}
+                        onChange={(e) => setUseApi(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">
+                        使用后端API (需要后端服务器运行)
+                      </span>
+                    </label>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    <p>API地址: {import.meta.env.VITE_API_URL || 'http://localhost:8000'}</p>
+                    <p>数据存储: {useApi ? '远程数据库' : '本地存储'}</p>
+                  </div>
                 </div>
               </div>
+              
+              <IconGallery />
             </div>
           )}
         </div>

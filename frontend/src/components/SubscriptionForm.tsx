@@ -11,6 +11,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ServiceIcon from '@/components/ServiceIcon';
+import { PREDEFINED_SERVICES } from '@/data/services';
 
 interface SubscriptionFormProps {
   isOpen: boolean;
@@ -19,13 +21,8 @@ interface SubscriptionFormProps {
   subscription?: Subscription | null;
 }
 
-const MOCK_SERVICES: Service[] = [
-  { id: '1', name: 'Netflix', icon_url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/netflix/netflix-original.svg', category: 'Entertainment' },
-  { id: '2', name: 'Spotify', icon_url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/spotify/spotify-original.svg', category: 'Entertainment' },
-  { id: '3', name: 'GitHub', icon_url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg', category: 'Development' },
-  { id: '4', name: 'AWS', icon_url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original.svg', category: 'Cloud' },
-  { id: '5', name: 'Slack', icon_url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/slack/slack-original.svg', category: 'Productivity' },
-];
+// 添加一个选项来允许用户输入自定义服务
+const CUSTOM_SERVICE_OPTION = { id: 'custom', name: '自定义服务...', category: 'Other' };
 
 const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
   isOpen,
@@ -39,6 +36,8 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
     payment_date: '',
     monthly_cost: 0,
   });
+  const [customServiceName, setCustomServiceName] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   useEffect(() => {
     if (subscription) {
@@ -58,11 +57,31 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
     }
   }, [subscription]);
 
+  const handleServiceChange = (serviceId: string) => {
+    setFormData({ ...formData, service_id: serviceId });
+    setShowCustomInput(serviceId === 'custom');
+    if (serviceId !== 'custom') {
+      setCustomServiceName('');
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    let service;
+    if (formData.service_id === 'custom') {
+      service = {
+        id: 'custom',
+        name: customServiceName,
+        category: 'Other',
+      };
+    } else {
+      service = PREDEFINED_SERVICES.find(s => s.id === formData.service_id);
+    }
+    
     onSubmit({
       ...formData,
-      service: MOCK_SERVICES.find(s => s.id === formData.service_id),
+      service,
     });
     onClose();
   };
@@ -84,22 +103,55 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
               <Label htmlFor="service" className="text-right">
                 Service
               </Label>
-              <select
-                id="service"
-                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={formData.service_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, service_id: e.target.value })
-                }
-                required
-              >
-                <option value="">Select a service</option>
-                {MOCK_SERVICES.map((service) => (
-                  <option key={service.id} value={service.id}>
-                    {service.name}
-                  </option>
-                ))}
-              </select>
+              <div className="col-span-3 space-y-2">
+                <select
+                  id="service"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={formData.service_id}
+                  onChange={(e) => handleServiceChange(e.target.value)}
+                  required
+                >
+                  <option value="">选择服务商</option>
+                  {PREDEFINED_SERVICES.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} ({service.category})
+                    </option>
+                  ))}
+                  <option value="custom">{CUSTOM_SERVICE_OPTION.name}</option>
+                </select>
+                
+                {/* 显示选中服务的图标预览 */}
+                {formData.service_id && formData.service_id !== 'custom' && (
+                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                    <ServiceIcon 
+                      serviceName={PREDEFINED_SERVICES.find(s => s.id === formData.service_id)?.name || ''}
+                      size={24}
+                    />
+                    <span className="text-sm text-gray-600">图标预览</span>
+                  </div>
+                )}
+                
+                {/* 自定义服务名称输入 */}
+                {showCustomInput && (
+                  <Input
+                    placeholder="输入自定义服务名称"
+                    value={customServiceName}
+                    onChange={(e) => setCustomServiceName(e.target.value)}
+                    required={formData.service_id === 'custom'}
+                  />
+                )}
+                
+                {/* 自定义服务图标预览 */}
+                {showCustomInput && customServiceName && (
+                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                    <ServiceIcon 
+                      serviceName={customServiceName}
+                      size={24}
+                    />
+                    <span className="text-sm text-gray-600">将生成首字母图标</span>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="account" className="text-right">
