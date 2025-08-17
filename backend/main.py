@@ -9,12 +9,15 @@ from dotenv import load_dotenv
 
 from database import get_db, init_db
 from models import Subscription, Service
+from openrouter_client import openrouter_client
 from schemas import (
     SubscriptionCreate, 
     SubscriptionUpdate, 
     SubscriptionResponse,
     ServiceResponse,
-    AnalyticsResponse
+    AnalyticsResponse,
+    NLPSubscriptionRequest,
+    NLPSubscriptionResponse
 )
 
 load_dotenv()
@@ -56,7 +59,13 @@ async def get_subscriptions(db: AsyncSession = Depends(get_db)):
             service_id=str(sub.service_id),
             account=sub.account,
             payment_date=sub.payment_date.isoformat(),
+            cost=float(sub.cost),
+            billing_cycle=sub.billing_cycle,
             monthly_cost=float(sub.monthly_cost),
+            is_trial=sub.is_trial,
+            trial_start_date=sub.trial_start_date.isoformat() if sub.trial_start_date else None,
+            trial_end_date=sub.trial_end_date.isoformat() if sub.trial_end_date else None,
+            trial_duration_days=sub.trial_duration_days,
             created_at=sub.created_at.isoformat() if sub.created_at else None,
             updated_at=sub.updated_at.isoformat() if sub.updated_at else None,
             service=ServiceResponse(
@@ -93,7 +102,13 @@ async def create_subscription(
         service_id=subscription.service_id,
         account=subscription.account,
         payment_date=datetime.fromisoformat(subscription.payment_date),
-        monthly_cost=subscription.monthly_cost
+        cost=subscription.cost,
+        billing_cycle=subscription.billing_cycle,
+        monthly_cost=subscription.monthly_cost,
+        is_trial=subscription.is_trial,
+        trial_start_date=datetime.fromisoformat(subscription.trial_start_date) if subscription.trial_start_date else None,
+        trial_end_date=datetime.fromisoformat(subscription.trial_end_date) if subscription.trial_end_date else None,
+        trial_duration_days=subscription.trial_duration_days
     )
     
     db.add(db_subscription)
@@ -105,7 +120,13 @@ async def create_subscription(
         service_id=str(db_subscription.service_id),
         account=db_subscription.account,
         payment_date=db_subscription.payment_date.isoformat(),
+        cost=float(db_subscription.cost),
+        billing_cycle=db_subscription.billing_cycle,
         monthly_cost=float(db_subscription.monthly_cost),
+        is_trial=db_subscription.is_trial,
+        trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
+        trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
+        trial_duration_days=db_subscription.trial_duration_days,
         created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
         updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
         service=ServiceResponse(
@@ -134,8 +155,20 @@ async def update_subscription(
         db_subscription.account = subscription.account
     if subscription.payment_date is not None:
         db_subscription.payment_date = datetime.fromisoformat(subscription.payment_date)
+    if subscription.cost is not None:
+        db_subscription.cost = subscription.cost
+    if subscription.billing_cycle is not None:
+        db_subscription.billing_cycle = subscription.billing_cycle
     if subscription.monthly_cost is not None:
         db_subscription.monthly_cost = subscription.monthly_cost
+    if subscription.is_trial is not None:
+        db_subscription.is_trial = subscription.is_trial
+    if subscription.trial_start_date is not None:
+        db_subscription.trial_start_date = datetime.fromisoformat(subscription.trial_start_date) if subscription.trial_start_date else None
+    if subscription.trial_end_date is not None:
+        db_subscription.trial_end_date = datetime.fromisoformat(subscription.trial_end_date) if subscription.trial_end_date else None
+    if subscription.trial_duration_days is not None:
+        db_subscription.trial_duration_days = subscription.trial_duration_days
     
     db_subscription.updated_at = datetime.utcnow()
     
@@ -152,7 +185,13 @@ async def update_subscription(
         service_id=str(db_subscription.service_id),
         account=db_subscription.account,
         payment_date=db_subscription.payment_date.isoformat(),
+        cost=float(db_subscription.cost),
+        billing_cycle=db_subscription.billing_cycle,
         monthly_cost=float(db_subscription.monthly_cost),
+        is_trial=db_subscription.is_trial,
+        trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
+        trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
+        trial_duration_days=db_subscription.trial_duration_days,
         created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
         updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
         service=ServiceResponse(
@@ -223,6 +262,105 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
         monthly_trend=monthly_trend,
         service_count=len(subscriptions)
     )
+
+@app.post("/subscriptions/nlp", response_model=NLPSubscriptionResponse)
+async def create_subscription_from_nlp(
+    request: NLPSubscriptionRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        parsed_data = await openrouter_client.parse_subscription_text(request.text)
+        
+        if not parsed_data or not parsed_data.get("service_name"):
+            return NLPSubscriptionResponse(
+                success=False,
+                message="无法解析订阅信息，请提供更详细的信息",
+                parsed_data=parsed_data
+            )
+        
+        if not parsed_data.get("monthly_cost"):
+            return NLPSubscriptionResponse(
+                success=False,
+                message="无法确定月费用，请明确指定费用金额",
+                parsed_data=parsed_data
+            )
+        
+        # Create or get service
+        service_result = await db.execute(
+            select(Service).where(Service.name == parsed_data["service_name"])
+        )
+        service = service_result.scalar_one_or_none()
+        
+        if not service:
+            service = Service(
+                name=parsed_data["service_name"],
+                icon_url="",
+                category=parsed_data["service_category"]
+            )
+            db.add(service)
+            await db.flush()
+        
+        # Calculate trial dates if trial is present
+        trial_start_date = None
+        trial_end_date = None
+        if parsed_data.get("is_trial") and parsed_data.get("trial_duration_days", 0) > 0:
+            trial_start_date = datetime.now()
+            trial_end_date = trial_start_date + timedelta(days=parsed_data["trial_duration_days"])
+        
+        # Create subscription
+        db_subscription = Subscription(
+            service_id=service.id,
+            account=parsed_data["account"],
+            payment_date=datetime.fromisoformat(parsed_data["payment_date"]),
+            cost=parsed_data["monthly_cost"],
+            billing_cycle="monthly",
+            monthly_cost=parsed_data["monthly_cost"],
+            is_trial=parsed_data.get("is_trial", False),
+            trial_start_date=trial_start_date,
+            trial_end_date=trial_end_date,
+            trial_duration_days=parsed_data.get("trial_duration_days", 0)
+        )
+        
+        db.add(db_subscription)
+        await db.commit()
+        await db.refresh(db_subscription)
+        
+        subscription_response = SubscriptionResponse(
+            id=str(db_subscription.id),
+            service_id=str(db_subscription.service_id),
+            account=db_subscription.account,
+            payment_date=db_subscription.payment_date.isoformat(),
+            cost=float(db_subscription.cost),
+            billing_cycle=db_subscription.billing_cycle,
+            monthly_cost=float(db_subscription.monthly_cost),
+            is_trial=db_subscription.is_trial,
+            trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
+            trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
+            trial_duration_days=db_subscription.trial_duration_days,
+            created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
+            updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
+            service=ServiceResponse(
+                id=str(service.id),
+                name=service.name,
+                icon_url=service.icon_url,
+                category=service.category
+            )
+        )
+        
+        return NLPSubscriptionResponse(
+            success=True,
+            message="订阅信息已成功添加",
+            subscription=subscription_response,
+            parsed_data=parsed_data
+        )
+        
+    except Exception as e:
+        print(f"Error creating subscription from NLP: {e}")
+        return NLPSubscriptionResponse(
+            success=False,
+            message=f"处理请求时发生错误: {str(e)}",
+            parsed_data=None
+        )
 
 if __name__ == "__main__":
     import uvicorn

@@ -9,7 +9,8 @@ import {
   Trash2, 
   Search,
   ArrowUpDown,
-  Plus
+  Plus,
+  MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -18,6 +19,7 @@ interface SubscriptionTableProps {
   onEdit: (subscription: Subscription) => void;
   onDelete: (id: string) => void;
   onAdd: () => void;
+  onNLPAdd?: () => void;
 }
 
 const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
@@ -25,6 +27,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
   onEdit,
   onDelete,
   onAdd,
+  onNLPAdd,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<keyof Subscription>('service');
@@ -63,10 +66,18 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Active Subscriptions</h2>
-          <Button onClick={onAdd} className="bg-green-600 hover:bg-green-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Subscription
-          </Button>
+          <div className="flex space-x-2">
+            {onNLPAdd && (
+              <Button onClick={onNLPAdd} className="bg-blue-600 hover:bg-blue-700">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                智能添加
+              </Button>
+            )}
+            <Button onClick={onAdd} className="bg-green-600 hover:bg-green-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Subscription
+            </Button>
+          </div>
         </div>
         <div className="mt-4 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -112,13 +123,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
                 </button>
               </th>
               <th className="px-6 py-3 text-left">
-                <button
-                  onClick={() => handleSort('monthly_cost')}
-                  className="flex items-center space-x-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700"
-                >
-                  <span>Monthly Cost</span>
-                  <ArrowUpDown className="h-3 w-3" />
-                </button>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</span>
               </th>
               <th className="px-6 py-3 text-left">
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Trial Status</span>
@@ -152,9 +157,19 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm font-semibold text-gray-900">
-                    ${subscription.monthly_cost.toFixed(2)}
-                  </span>
+                  <div className="text-sm">
+                    <div className="font-semibold text-gray-900">
+                      ${(subscription.cost || 0).toFixed(2)}
+                      <span className="text-xs text-gray-500 ml-1">
+                        /{subscription.billing_cycle === 'yearly' ? 'year' : 'month'}
+                      </span>
+                    </div>
+                    {subscription.billing_cycle === 'yearly' && subscription.monthly_cost !== undefined && (
+                      <div className="text-xs text-gray-500">
+                        ${subscription.monthly_cost.toFixed(2)}/month
+                      </div>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <TrialStatus subscription={subscription} />

@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import SubscriptionTable from '@/components/SubscriptionTable';
 import SubscriptionForm from '@/components/SubscriptionForm';
+import NLPSubscriptionForm from '@/components/NLPSubscriptionForm';
 import Analytics from '@/components/Analytics';
 import TrialOverview from '@/components/TrialOverview';
-import type { Subscription, Analytics as AnalyticsData } from '@/types';
+import type { Subscription, Analytics as AnalyticsData, MonthlySpending } from '@/types';
 import { subscriptionApi } from '@/api/client';
 
 const MOCK_SUBSCRIPTIONS: Subscription[] = [
@@ -14,6 +15,8 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
     service: { id: 'netflix', name: 'Netflix', category: 'Entertainment' },
     account: 'family@example.com',
     payment_date: '2024-01-15',
+    cost: 19.99,
+    billing_cycle: 'monthly',
     monthly_cost: 19.99,
   },
   {
@@ -22,7 +25,9 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
     service: { id: 'spotify', name: 'Spotify', category: 'Entertainment' },
     account: 'user@example.com',
     payment_date: '2024-01-10',
-    monthly_cost: 9.99,
+    cost: 99.99,
+    billing_cycle: 'yearly',
+    monthly_cost: 8.33,
     is_trial: true,
     trial_start_date: '2024-12-01',
     trial_end_date: '2024-12-31',
@@ -34,6 +39,8 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
     service: { id: 'github', name: 'GitHub', category: 'Development' },
     account: 'dev@example.com',
     payment_date: '2024-01-01',
+    cost: 7.00,
+    billing_cycle: 'monthly',
     monthly_cost: 7.00,
     is_trial: true,
     trial_start_date: '2024-12-10',
@@ -46,6 +53,8 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
     service: { id: 'aws', name: 'Amazon Web Services', category: 'Cloud' },
     account: 'admin@company.com',
     payment_date: '2024-01-01',
+    cost: 1800.00,
+    billing_cycle: 'yearly',
     monthly_cost: 150.00,
   },
   {
@@ -54,6 +63,8 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
     service: { id: 'custom', name: '自定义服务', category: 'Other' },
     account: 'test@example.com',
     payment_date: '2024-01-05',
+    cost: 25.00,
+    billing_cycle: 'monthly',
     monthly_cost: 25.00,
     is_trial: true,
     trial_start_date: '2024-12-05',
@@ -67,6 +78,7 @@ function App() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isNLPFormOpen, setIsNLPFormOpen] = useState(false);
   const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
   const [useApi, setUseApi] = useState(false);
 
@@ -116,10 +128,29 @@ function App() {
       return acc;
     }, [] as { category: string; total: number }[]);
 
-    const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
-      const month = new Date(2024, i).toLocaleString('default', { month: 'short' });
-      return { month, total: totalMonthly * (0.8 + Math.random() * 0.4) };
-    });
+    const storedMonthlyTrend = localStorage.getItem('monthlySpendingTrend');
+    let monthlyTrend: MonthlySpending[];
+    
+    if (storedMonthlyTrend) {
+      monthlyTrend = JSON.parse(storedMonthlyTrend);
+    } else {
+      monthlyTrend = Array.from({ length: 6 }, (_, i) => {
+        const date = new Date(2024, i);
+        const month = date.toLocaleString('default', { month: 'short' });
+        return { 
+          month, 
+          year: 2024, 
+          projected: totalMonthly,
+          actual: undefined
+        };
+      });
+      localStorage.setItem('monthlySpendingTrend', JSON.stringify(monthlyTrend));
+    }
+
+    monthlyTrend = monthlyTrend.map(item => ({
+      ...item,
+      projected: totalMonthly
+    }));
 
     setAnalytics({
       total_monthly_cost: totalMonthly,
@@ -133,6 +164,14 @@ function App() {
   const handleAddSubscription = () => {
     setEditingSubscription(null);
     setIsFormOpen(true);
+  };
+
+  const handleNLPAddSubscription = () => {
+    setIsNLPFormOpen(true);
+  };
+
+  const handleNLPSuccess = () => {
+    loadData();
   };
 
   const handleEditSubscription = (subscription: Subscription) => {
@@ -193,6 +232,16 @@ function App() {
     setEditingSubscription(null);
   };
 
+  const handleMonthlySpendingUpdate = (updatedData: MonthlySpending[]) => {
+    localStorage.setItem('monthlySpendingTrend', JSON.stringify(updatedData));
+    if (analytics) {
+      setAnalytics({
+        ...analytics,
+        monthly_trend: updatedData,
+      });
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
@@ -219,8 +268,9 @@ function App() {
                 onEdit={handleEditSubscription}
                 onDelete={handleDeleteSubscription}
                 onAdd={handleAddSubscription}
+                onNLPAdd={useApi ? handleNLPAddSubscription : undefined}
               />
-              {analytics && <Analytics data={analytics} />}
+              {analytics && <Analytics data={analytics} onMonthlySpendingUpdate={handleMonthlySpendingUpdate} />}
             </div>
           )}
 
@@ -230,11 +280,12 @@ function App() {
               onEdit={handleEditSubscription}
               onDelete={handleDeleteSubscription}
               onAdd={handleAddSubscription}
+              onNLPAdd={useApi ? handleNLPAddSubscription : undefined}
             />
           )}
 
           {activeSection === 'analytics' && analytics && (
-            <Analytics data={analytics} />
+            <Analytics data={analytics} onMonthlySpendingUpdate={handleMonthlySpendingUpdate} />
           )}
 
           {activeSection === 'settings' && (
@@ -284,6 +335,12 @@ function App() {
         }}
         onSubmit={handleSubmitSubscription}
         subscription={editingSubscription}
+      />
+
+      <NLPSubscriptionForm
+        isOpen={isNLPFormOpen}
+        onClose={() => setIsNLPFormOpen(false)}
+        onSuccess={handleNLPSuccess}
       />
     </div>
   );

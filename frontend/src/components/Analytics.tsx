@@ -15,19 +15,21 @@ import {
   Cell,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Analytics as AnalyticsData } from '@/types';
+import MonthlySpendingInput from './MonthlySpendingInput';
+import type { Analytics as AnalyticsData, MonthlySpending } from '@/types';
 
 interface AnalyticsProps {
   data: AnalyticsData;
+  onMonthlySpendingUpdate?: (updatedData: MonthlySpending[]) => void;
 }
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-const Analytics: React.FC<AnalyticsProps> = ({ data }) => {
+const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) => {
   const projectedAnnualData = Array.from({ length: 12 }, (_, i) => ({
     month: new Date(2024, i).toLocaleString('default', { month: 'short' }),
     projected: data.total_monthly_cost,
-    actual: i < 6 ? data.monthly_trend[i]?.total || 0 : null,
+    actual: i < data.monthly_trend.length ? data.monthly_trend[i]?.actual || null : null,
   }));
 
   return (
@@ -69,8 +71,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ data }) => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
-              <Tooltip formatter={(value) => `$${value}`} />
-              <Bar dataKey="total" fill="#10b981" />
+              <Tooltip formatter={(value, name) => [`$${value}`, name === 'projected' ? 'Projected' : 'Actual']} />
+              <Bar dataKey="projected" fill="#3b82f6" name="Projected" />
+              <Bar dataKey="actual" fill="#10b981" name="Actual" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -138,6 +141,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ data }) => {
           </div>
         </CardContent>
       </Card>
+
+      {onMonthlySpendingUpdate && (
+        <div className="lg:col-span-2 xl:col-span-3">
+          <MonthlySpendingInput
+            monthlyData={data.monthly_trend}
+            onUpdate={onMonthlySpendingUpdate}
+          />
+        </div>
+      )}
     </div>
   );
 };

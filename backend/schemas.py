@@ -1,6 +1,11 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+from enum import Enum
+
+class BillingCycle(str, Enum):
+    monthly = "monthly"
+    yearly = "yearly"
 
 class ServiceBase(BaseModel):
     name: str
@@ -20,7 +25,15 @@ class SubscriptionBase(BaseModel):
     service_id: int
     account: str
     payment_date: str
+    cost: float
+    billing_cycle: BillingCycle = BillingCycle.monthly
     monthly_cost: float
+    
+    # 试用期相关字段
+    is_trial: Optional[bool] = False
+    trial_start_date: Optional[str] = None
+    trial_end_date: Optional[str] = None
+    trial_duration_days: Optional[int] = None
 
 class SubscriptionCreate(SubscriptionBase):
     service: Optional[ServiceBase] = None
@@ -28,7 +41,15 @@ class SubscriptionCreate(SubscriptionBase):
 class SubscriptionUpdate(BaseModel):
     account: Optional[str] = None
     payment_date: Optional[str] = None
+    cost: Optional[float] = None
+    billing_cycle: Optional[BillingCycle] = None
     monthly_cost: Optional[float] = None
+    
+    # 试用期相关字段
+    is_trial: Optional[bool] = None
+    trial_start_date: Optional[str] = None
+    trial_end_date: Optional[str] = None
+    trial_duration_days: Optional[int] = None
 
 class SubscriptionResponse(SubscriptionBase):
     id: str
@@ -53,3 +74,12 @@ class AnalyticsResponse(BaseModel):
     category_breakdown: List[CategoryBreakdown]
     monthly_trend: List[MonthlyTrend]
     service_count: int
+
+class NLPSubscriptionRequest(BaseModel):
+    text: str
+
+class NLPSubscriptionResponse(BaseModel):
+    success: bool
+    message: str
+    subscription: Optional[SubscriptionResponse] = None
+    parsed_data: Optional[dict] = None

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Subscription } from '@/types';
+import type { Subscription, BillingCycle } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -11,9 +11,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import ServiceIcon from '@/components/ServiceIcon';
+import ServiceAutocomplete from '@/components/ServiceAutocomplete';
 import { PREDEFINED_SERVICES } from '@/data/services';
 import { getCommonTrialDurations, calculateTrialEndDate } from '@/utils/trialUtils';
+import type { ServiceData } from '@/data/services';
 
 interface SubscriptionFormProps {
   isOpen: boolean;
@@ -21,9 +22,6 @@ interface SubscriptionFormProps {
   onSubmit: (subscription: Omit<Subscription, 'id'>) => void;
   subscription?: Subscription | null;
 }
-
-// 添加一个选项来允许用户输入自定义服务
-const CUSTOM_SERVICE_OPTION = { id: 'custom', name: '自定义服务...', category: 'Other' };
 
 const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
   isOpen,
@@ -35,13 +33,14 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
     service_id: '',
     account: '',
     payment_date: '',
-    monthly_cost: 0,
+    cost: 0,
+    billing_cycle: 'monthly' as BillingCycle,
     is_trial: false,
     trial_start_date: '',
     trial_duration_days: 30,
   });
+  const [selectedService, setSelectedService] = useState<ServiceData | null>(null);
   const [customServiceName, setCustomServiceName] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
 
   useEffect(() => {
     if (subscription) {
@@ -49,28 +48,53 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         service_id: subscription.service_id,
         account: subscription.account,
         payment_date: subscription.payment_date,
-        monthly_cost: subscription.monthly_cost,
+        cost: subscription.cost,
+        billing_cycle: subscription.billing_cycle,
         is_trial: subscription.is_trial || false,
         trial_start_date: subscription.trial_start_date || '',
         trial_duration_days: subscription.trial_duration_days || 30,
       });
+      
+      // 设置选中的服务
+      if (subscription.service_id === 'custom') {
+        setSelectedService(null);
+        setCustomServiceName(subscription.service?.name || '');
+      } else {
+        const predefinedService = PREDEFINED_SERVICES.find(s => s.id === subscription.service_id);
+        setSelectedService(predefinedService || null);
+        setCustomServiceName('');
+      }
     } else {
       setFormData({
         service_id: '',
         account: '',
         payment_date: new Date().toISOString().split('T')[0],
-        monthly_cost: 0,
+        cost: 0,
+        billing_cycle: 'monthly' as BillingCycle,
         is_trial: false,
         trial_start_date: new Date().toISOString().split('T')[0],
         trial_duration_days: 30,
       });
+      setSelectedService(null);
+      setCustomServiceName('');
     }
   }, [subscription]);
 
-  const handleServiceChange = (serviceId: string) => {
-    setFormData({ ...formData, service_id: serviceId });
-    setShowCustomInput(serviceId === 'custom');
-    if (serviceId !== 'custom') {
+  const handleServiceSelect = (service: ServiceData | null, customName?: string) => {
+    if (service) {
+      // 选择了预定义服务
+      setSelectedService(service);
+      setFormData({ ...formData, service_id: service.id });
+      setCustomServiceName('');
+    } else if (customName) {
+      // 输入了自定义服务名称
+      setSelectedService(null);
+      setFormData({ ...formData, service_id: 'custom' });
+      setCustomServiceName(customName);
+    } else {
+      // 清空选择
+      setSelectedService(null);
+      setFormData({ ...formData, service_id: '' });
       setCustomServiceName('');
     }
   };
@@ -78,20 +102,37 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // 验证服务选择
+    if (!formData.service_id) {
+      alert('请选择或输入服务商名称');
+      return;
+    }
+
+    if (formData.service_id === 'custom' && !customServiceName.trim()) {
+      alert('请输入自定义服务商名称');
+      return;
+    }
+    
     let service;
     if (formData.service_id === 'custom') {
       service = {
         id: 'custom',
-        name: customServiceName,
+        name: customServiceName.trim(),
         category: 'Other',
       };
     } else {
-      service = PREDEFINED_SERVICES.find(s => s.id === formData.service_id);
+      service = selectedService || PREDEFINED_SERVICES.find(s => s.id === formData.service_id);
     }
     
+    // 计算月费用
+    const monthly_cost = formData.billing_cycle === 'yearly' 
+      ? formData.cost / 12 
+      : formData.cost;
+
     let submissionData: any = {
       ...formData,
       service,
+      monthly_cost,
     };
 
     // 如果是试用期，计算结束日期
@@ -123,54 +164,13 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
               <Label htmlFor="service" className="text-right">
                 Service
               </Label>
-              <div className="col-span-3 space-y-2">
-                <select
-                  id="service"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              <div className="col-span-3">
+                <ServiceAutocomplete
                   value={formData.service_id}
-                  onChange={(e) => handleServiceChange(e.target.value)}
+                  onServiceSelect={handleServiceSelect}
+                  placeholder="输入服务商名称，支持自动提示..."
                   required
-                >
-                  <option value="">选择服务商</option>
-                  {PREDEFINED_SERVICES.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name} ({service.category})
-                    </option>
-                  ))}
-                  <option value="custom">{CUSTOM_SERVICE_OPTION.name}</option>
-                </select>
-                
-                {/* 显示选中服务的图标预览 */}
-                {formData.service_id && formData.service_id !== 'custom' && (
-                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
-                    <ServiceIcon 
-                      serviceName={PREDEFINED_SERVICES.find(s => s.id === formData.service_id)?.name || ''}
-                      size={24}
-                    />
-                    <span className="text-sm text-gray-600">图标预览</span>
-                  </div>
-                )}
-                
-                {/* 自定义服务名称输入 */}
-                {showCustomInput && (
-                  <Input
-                    placeholder="输入自定义服务名称"
-                    value={customServiceName}
-                    onChange={(e) => setCustomServiceName(e.target.value)}
-                    required={formData.service_id === 'custom'}
-                  />
-                )}
-                
-                {/* 自定义服务图标预览 */}
-                {showCustomInput && customServiceName && (
-                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
-                    <ServiceIcon 
-                      serviceName={customServiceName}
-                      size={24}
-                    />
-                    <span className="text-sm text-gray-600">将生成首字母图标</span>
-                  </div>
-                )}
+                />
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -204,21 +204,44 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="monthly_cost" className="text-right">
-                Monthly Cost
+              <Label htmlFor="billing_cycle" className="text-right">
+                Billing Cycle
               </Label>
-              <Input
-                id="monthly_cost"
-                type="number"
-                step="0.01"
-                className="col-span-3"
-                value={formData.monthly_cost}
+              <select
+                id="billing_cycle"
+                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={formData.billing_cycle}
                 onChange={(e) =>
-                  setFormData({ ...formData, monthly_cost: parseFloat(e.target.value) })
+                  setFormData({ ...formData, billing_cycle: e.target.value as BillingCycle })
                 }
-                placeholder="9.99"
-                required
-              />
+              >
+                <option value="monthly">Monthly (月费)</option>
+                <option value="yearly">Yearly (年费)</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cost" className="text-right">
+                {formData.billing_cycle === 'yearly' ? 'Annual Cost' : 'Monthly Cost'}
+              </Label>
+              <div className="col-span-3 space-y-2">
+                <Input
+                  id="cost"
+                  type="number"
+                  step="0.01"
+                  value={formData.cost}
+                  onChange={(e) =>
+                    setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })
+                  }
+                  placeholder={formData.billing_cycle === 'yearly' ? '99.99' : '9.99'}
+                  required
+                />
+                {formData.billing_cycle === 'yearly' && formData.cost > 0 && (
+                  <div className="text-xs text-gray-600">
+                    Monthly equivalent: ${(formData.cost / 12).toFixed(2)}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 试用期设置 */}
