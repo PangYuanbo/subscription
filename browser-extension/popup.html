@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscription Tracker</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 380px;
+      min-height: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #f8fafc;
+      color: #1a1a1a;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .status {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #e1e5e9;
+    }
+
+    .status.loading {
+      text-align: center;
+      color: #666;
+    }
+
+    .status.detected {
+      border-color: #10b981;
+      background: #f0fdf4;
+    }
+
+    .service-info {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #e1e5e9;
+    }
+
+    .service-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+
+    .price-info {
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .price-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      background: white;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #059669;
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .detected-badge {
+      display: inline-block;
+      background: #10b981;
+      color: white;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+
+    .no-detection {
+      text-align: center;
+      color: #666;
+      padding: 40px 20px;
+    }
+
+    .no-detection .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .success {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #059669;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 50%;
+      border-top-color: #10b981;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎯 Subscription Tracker</h1>
+    <p>智能订阅管理助手</p>
+  </div>
+
+  <div class="content">
+    <!-- 加载状态 -->
+    <div id="loading-status" class="status loading">
+      <div class="loading-spinner"></div>
+      正在检测当前页面...
+    </div>
+
+    <!-- 未检测到订阅服务 -->
+    <div id="no-detection" class="no-detection" style="display: none;">
+      <div class="icon">🔍</div>
+      <h3>未检测到订阅服务</h3>
+      <p>当前页面似乎不是订阅服务页面</p>
+      <button class="btn btn-primary" onclick="window.close()" style="margin-top: 16px;">
+        关闭
+      </button>
+    </div>
+
+    <!-- 检测到订阅服务 -->
+    <div id="subscription-form" style="display: none;">
+      <div class="status detected">
+        <span class="detected-badge">已检测</span>
+        <strong style="margin-left: 8px;">找到订阅服务信息</strong>
+      </div>
+
+      <form id="subscription-data-form">
+        <div class="service-info">
+          <div class="service-name" id="service-name">Loading...</div>
+          <div id="price-info" class="price-info" style="display: none;">
+            <!-- 价格信息将在这里显示 -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="account">账户/邮箱</label>
+          <input type="email" id="account" placeholder="输入您的账户邮箱" required>
+        </div>
+
+        <div class="form-group">
+          <label for="billing-cycle">计费周期</label>
+          <select id="billing-cycle" required>
+            <option value="">请选择计费周期</option>
+            <option value="monthly">月费</option>
+            <option value="yearly">年费</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="cost">费用</label>
+          <input type="number" id="cost" step="0.01" placeholder="输入费用金额" required>
+        </div>
+
+        <div class="form-group">
+          <label for="payment-date">付款日期</label>
+          <input type="date" id="payment-date" required>
+        </div>
+
+        <div id="error-message" class="error" style="display: none;"></div>
+        <div id="success-message" class="success" style="display: none;"></div>
+
+        <div class="button-group">
+          <button type="button" class="btn btn-secondary" onclick="window.close()">
+            取消
+          </button>
+          <button type="submit" class="btn btn-primary" id="submit-btn">
+            添加订阅
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

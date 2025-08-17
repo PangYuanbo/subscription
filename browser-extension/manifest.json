@@ -1,0 +1,75 @@
+{
+  "manifest_version": 3,
+  "name": "Subscription Tracker",
+  "version": "1.0.0",
+  "description": "自动检测订阅服务并提取信息，快速创建订阅记录",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost:*/*",
+    "https://localhost:*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.netflix.com/*",
+        "https://*.spotify.com/*",
+        "https://*.github.com/*",
+        "https://*.adobe.com/*",
+        "https://*.microsoft.com/*",
+        "https://*.google.com/*",
+        "https://*.aws.amazon.com/*",
+        "https://*.azure.microsoft.com/*",
+        "https://*.digitalocean.com/*",
+        "https://*.heroku.com/*",
+        "https://*.vercel.com/*",
+        "https://*.slack.com/*",
+        "https://*.discord.com/*",
+        "https://*.notion.so/*",
+        "https://*.figma.com/*",
+        "https://*.jetbrains.com/*",
+        "https://*.apple.com/*",
+        "https://*.zoom.us/*",
+        "https://*.dropbox.com/*",
+        "https://*.atlassian.com/*",
+        "https://*.coursera.org/*",
+        "https://*.udemy.com/*",
+        "https://*.skillshare.com/*",
+        "https://*.headspace.com/*",
+        "https://*.duolingo.com/*",
+        "https://checkout.*",
+        "https://billing.*",
+        "https://subscribe.*",
+        "https://signup.*",
+        "https://*/subscribe/*",
+        "https://*/billing/*",
+        "https://*/checkout/*",
+        "https://*/pricing/*",
+        "https://*/plans/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Subscription Tracker"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["inject.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

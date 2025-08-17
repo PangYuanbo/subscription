@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TestFlow Premium - Subscribe Now</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f8fafc;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    .logo {
+      font-size: 32px;
+      font-weight: bold;
+      color: #6366f1;
+      margin-bottom: 16px;
+    }
+    
+    .pricing-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin: 40px 0;
+    }
+    
+    .pricing-card {
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 32px 24px;
+      text-align: center;
+      position: relative;
+    }
+    
+    .pricing-card.popular {
+      border-color: #6366f1;
+      background: linear-gradient(135deg, #f8faff 0%, #f1f5f9 100%);
+    }
+    
+    .plan-name {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1a1a1a;
+    }
+    
+    .price {
+      font-size: 48px;
+      font-weight: 700;
+      color: #6366f1;
+      margin-bottom: 8px;
+    }
+    
+    .price-period {
+      color: #6b7280;
+      font-size: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .features {
+      list-style: none;
+      padding: 0;
+      margin: 24px 0;
+    }
+    
+    .features li {
+      padding: 8px 0;
+      color: #374151;
+      position: relative;
+      padding-left: 24px;
+    }
+    
+    .features li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: bold;
+    }
+    
+    .subscribe-btn {
+      background: #6366f1;
+      color: white;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 24px;
+    }
+    
+    .subscribe-btn:hover {
+      background: #5338ea;
+    }
+    
+    .popular-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #6366f1;
+      color: white;
+      padding: 4px 16px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .billing-toggle {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin: 32px 0;
+    }
+    
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+    
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: #6366f1;
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">TestFlow</div>
+      <h1>升级到 Premium 计划</h1>
+      <p>解锁全部功能，提升工作效率</p>
+    </div>
+    
+    <div class="billing-toggle">
+      <span>Monthly Billing</span>
+      <label class="toggle">
+        <input type="checkbox" id="billing-toggle">
+        <span class="slider"></span>
+      </label>
+      <span>Annual Billing <em>(Save 20%)</em></span>
+    </div>
+    
+    <div class="pricing-cards">
+      <div class="pricing-card">
+        <div class="plan-name">Basic Plan</div>
+        <div class="price" id="basic-price">$9.99</div>
+        <div class="price-period" id="basic-period">/month</div>
+        
+        <ul class="features">
+          <li>Up to 5 projects</li>
+          <li>10GB storage</li>
+          <li>Basic analytics</li>
+          <li>Email support</li>
+        </ul>
+        
+        <button class="subscribe-btn" onclick="subscribe('basic')">
+          Subscribe to Basic
+        </button>
+      </div>
+      
+      <div class="pricing-card popular">
+        <div class="popular-badge">Most Popular</div>
+        <div class="plan-name">Pro Plan</div>
+        <div class="price" id="pro-price">$19.99</div>
+        <div class="price-period" id="pro-period">/month</div>
+        
+        <ul class="features">
+          <li>Unlimited projects</li>
+          <li>100GB storage</li>
+          <li>Advanced analytics</li>
+          <li>Priority support</li>
+          <li>Team collaboration</li>
+          <li>API access</li>
+        </ul>
+        
+        <button class="subscribe-btn" onclick="subscribe('pro')">
+          Subscribe to Pro
+        </button>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 40px; color: #6b7280;">
+      <p>💳 All plans include 14-day free trial</p>
+      <p>🔒 Secure payment with 256-bit SSL encryption</p>
+      <p>↩️ Cancel anytime, no questions asked</p>
+    </div>
+  </div>
+  
+  <script>
+    // 切换年费/月费
+    const toggle = document.getElementById('billing-toggle');
+    const basicPrice = document.getElementById('basic-price');
+    const basicPeriod = document.getElementById('basic-period');
+    const proPrice = document.getElementById('pro-price');
+    const proPeriod = document.getElementById('pro-period');
+    
+    const prices = {
+      monthly: { basic: 9.99, pro: 19.99 },
+      yearly: { basic: 95.90, pro: 191.90 }
+    };
+    
+    toggle.addEventListener('change', function() {
+      if (this.checked) {
+        // 年费
+        basicPrice.textContent = `$${prices.yearly.basic}`;
+        basicPeriod.textContent = '/year';
+        proPrice.textContent = `$${prices.yearly.pro}`;
+        proPeriod.textContent = '/year';
+      } else {
+        // 月费
+        basicPrice.textContent = `$${prices.monthly.basic}`;
+        basicPeriod.textContent = '/month';
+        proPrice.textContent = `$${prices.monthly.pro}`;
+        proPeriod.textContent = '/month';
+      }
+    });
+    
+    function subscribe(plan) {
+      const isYearly = toggle.checked;
+      const period = isYearly ? 'yearly' : 'monthly';
+      const price = prices[period][plan];
+      
+      // 模拟支付流程
+      console.log(`User clicked subscribe for ${plan} plan: $${price}/${period}`);
+      
+      // 显示支付选项
+      showPaymentOptions(plan, price, period);
+    }
+    
+    function showPaymentOptions(plan, price, period) {
+      const paymentHtml = `
+        <div id="payment-modal" style="
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0,0,0,0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10000;
+        ">
+          <div style="
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+          ">
+            <h2 style="margin: 0 0 16px 0;">选择支付方式</h2>
+            <p style="margin: 0 0 24px 0; color: #666;">
+              ${plan} 计划 - $${price}/${period === 'yearly' ? 'year' : 'month'}
+            </p>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <button onclick="processPayment('stripe')" style="
+                padding: 12px;
+                border: 1px solid #e1e5e9;
+                border-radius: 8px;
+                background: white;
+                cursor: pointer;
+                text-align: left;
+              ">
+                💳 信用卡支付 (Stripe)
+              </button>
+              
+              <button onclick="processPayment('paypal')" style="
+                padding: 12px;
+                border: 1px solid #e1e5e9;
+                border-radius: 8px;
+                background: white;
+                cursor: pointer;
+                text-align: left;
+              ">
+                🅿️ PayPal
+              </button>
+              
+              <button onclick="processPayment('alipay')" style="
+                padding: 12px;
+                border: 1px solid #e1e5e9;
+                border-radius: 8px;
+                background: white;
+                cursor: pointer;
+                text-align: left;
+              ">
+                🔵 支付宝
+              </button>
+              
+              <button onclick="processPayment('wechat')" style="
+                padding: 12px;
+                border: 1px solid #e1e5e9;
+                border-radius: 8px;
+                background: white;
+                cursor: pointer;
+                text-align: left;
+              ">
+                💚 微信支付
+              </button>
+            </div>
+            
+            <button onclick="closePaymentModal()" style="
+              margin-top: 20px;
+              padding: 8px 16px;
+              background: #f3f4f6;
+              border: none;
+              border-radius: 6px;
+              cursor: pointer;
+              width: 100%;
+            ">
+              取消
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', paymentHtml);
+    }
+    
+    function processPayment(method) {
+      console.log(`Processing payment with ${method}`);
+      
+      // 模拟支付页面跳转
+      const paymentUrls = {
+        stripe: 'https://checkout.stripe.com/pay/test_payment',
+        paypal: 'https://www.paypal.com/checkout?token=test_token',
+        alipay: 'https://mapi.alipay.com/gateway.do?_input_charset=utf-8',
+        wechat: 'https://pay.weixin.qq.com/index.php/public/wechatpay'
+      };
+      
+      // 显示支付确认
+      alert(`正在跳转到 ${method} 支付页面...\n\n插件应该检测到这个支付行为并自动弹出订阅记录表单！`);
+      
+      // 模拟支付页面
+      showMockPaymentPage(method);
+      
+      closePaymentModal();
+    }
+    
+    function showMockPaymentPage(method) {
+      // 创建模拟支付页面
+      const paymentPageHtml = `
+        <div id="mock-payment-page" style="
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: white;
+          z-index: 20000;
+          overflow-y: auto;
+        ">
+          <div style="
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+          ">
+            <div style="text-align: center; margin-bottom: 40px;">
+              <h1>🔒 安全支付</h1>
+              <p style="color: #666;">正在使用 ${method.toUpperCase()} 处理您的付款</p>
+            </div>
+            
+            <div style="
+              background: #f8fafc;
+              border-radius: 12px;
+              padding: 24px;
+              margin-bottom: 24px;
+            ">
+              <h3>订单信息</h3>
+              <div style="display: flex; justify-content: space-between; margin: 12px 0;">
+                <span>TestFlow Pro Plan</span>
+                <strong>$19.99/month</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin: 12px 0;">
+                <span>税费</span>
+                <span>$2.00</span>
+              </div>
+              <hr style="margin: 16px 0;">
+              <div style="display: flex; justify-content: space-between; font-size: 18px;">
+                <strong>总计</strong>
+                <strong>$21.99</strong>
+              </div>
+            </div>
+            
+            <form style="
+              background: white;
+              border: 1px solid #e1e5e9;
+              border-radius: 12px;
+              padding: 24px;
+              margin-bottom: 24px;
+            ">
+              <h3>支付信息</h3>
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px;">邮箱地址</label>
+                <input type="email" placeholder="your@email.com" style="
+                  width: 100%;
+                  padding: 12px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                ">
+              </div>
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px;">卡号</label>
+                <input type="text" placeholder="1234 5678 9012 3456" style="
+                  width: 100%;
+                  padding: 12px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                ">
+              </div>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                  <label style="display: block; margin-bottom: 8px;">有效期</label>
+                  <input type="text" placeholder="MM/YY" style="
+                    width: 100%;
+                    padding: 12px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 6px;
+                  ">
+                </div>
+                <div>
+                  <label style="display: block; margin-bottom: 8px;">CVC</label>
+                  <input type="text" placeholder="123" style="
+                    width: 100%;
+                    padding: 12px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 6px;
+                  ">
+                </div>
+              </div>
+              
+              <button type="button" onclick="completePurchase()" style="
+                width: 100%;
+                background: #6366f1;
+                color: white;
+                border: none;
+                padding: 16px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                margin-top: 24px;
+                cursor: pointer;
+              ">
+                完成购买 $21.99
+              </button>
+            </form>
+            
+            <div style="text-align: center;">
+              <button onclick="closeMockPaymentPage()" style="
+                background: #f3f4f6;
+                color: #374151;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 6px;
+                cursor: pointer;
+              ">
+                返回
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', paymentPageHtml);
+    }
+    
+    function completePurchase() {
+      alert('支付完成！\n\n插件应该在检测到支付成功后自动提示您记录这个订阅。');
+      closeMockPaymentPage();
+    }
+    
+    function closePaymentModal() {
+      const modal = document.getElementById('payment-modal');
+      if (modal) modal.remove();
+    }
+    
+    function closeMockPaymentPage() {
+      const page = document.getElementById('mock-payment-page');
+      if (page) page.remove();
+    }
+  </script>
+</body>
+</html>
