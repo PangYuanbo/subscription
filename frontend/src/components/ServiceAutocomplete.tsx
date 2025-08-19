@@ -14,7 +14,7 @@ interface ServiceAutocompleteProps {
 const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
   value,
   onServiceSelect,
-  placeholder = "输入服务商名称...",
+  placeholder = "Enter service name...",
   required = false,
 }) => {
   const [inputValue, setInputValue] = useState('');
@@ -25,14 +25,14 @@ const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 根据选中的服务设置输入框的值
+    // Set input value based on selected service
     if (value) {
       const selectedService = PREDEFINED_SERVICES.find(s => s.id === value);
       if (selectedService) {
         setInputValue(selectedService.name);
       } else if (value === 'custom') {
-        // 如果是自定义服务，保持当前输入值
-        // inputValue 已经包含用户输入的自定义名称
+        // If it's a custom service, keep current input value
+        // inputValue already contains the user-entered custom name
       }
     } else {
       setInputValue('');
@@ -48,7 +48,7 @@ const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
     const filtered = PREDEFINED_SERVICES.filter(service =>
       service.name.toLowerCase().includes(query.toLowerCase()) ||
       service.category.toLowerCase().includes(query.toLowerCase())
-    ).slice(0, 8); // 限制显示最多8个结果
+    ).slice(0, 8); // Limit to maximum 8 results
 
     setFilteredServices(filtered);
     setSelectedIndex(-1);
@@ -60,7 +60,7 @@ const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
     setIsOpen(true);
     filterServices(newValue);
 
-    // 如果用户正在输入，但还没选择任何预定义服务，则作为自定义服务处理
+    // If user is typing but hasn't selected any predefined service, treat as custom service
     if (newValue.trim()) {
       const exactMatch = PREDEFINED_SERVICES.find(s => 
         s.name.toLowerCase() === newValue.toLowerCase()
@@ -101,7 +101,7 @@ const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
         if (selectedIndex >= 0 && selectedIndex < filteredServices.length) {
           handleServiceSelect(filteredServices[selectedIndex]);
         } else if (inputValue.trim()) {
-          // 如果没有选中任何项目但有输入内容，作为自定义服务
+          // If no item is selected but there's input content, treat as custom service
           setIsOpen(false);
           onServiceSelect(null, inputValue.trim());
         }
@@ -121,7 +121,7 @@ const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
   };
 
   const handleBlur = (e: React.FocusEvent) => {
-    // 延迟关闭下拉列表，以便处理点击选项的情况
+    // Delay closing dropdown to handle option click cases
     setTimeout(() => {
       if (!dropdownRef.current?.contains(e.relatedTarget as Node)) {
         setIsOpen(false);
@@ -130,7 +130,7 @@ const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
     }, 150);
   };
 
-  // 点击外部关闭下拉列表
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -188,7 +188,7 @@ const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
         </div>
       )}
       
-      {/* 显示当前选择或将创建的服务信息 */}
+      {/* Display current selection or service to be created */}
       {inputValue.trim() && (
         <div className="mt-2">
           {(() => {
@@ -200,7 +200,7 @@ const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
                 <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-md">
                   <ServiceIcon serviceName={exactMatch.name} size={20} />
                   <span className="text-sm text-blue-800">
-                    已选择: {exactMatch.name} ({exactMatch.category})
+                    Selected: {exactMatch.name} ({exactMatch.category})
                   </span>
                 </div>
               );
@@ -209,7 +209,7 @@ const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
                 <div className="flex items-center gap-2 p-2 bg-amber-50 rounded-md">
                   <ServiceIcon serviceName={inputValue} size={20} />
                   <span className="text-sm text-amber-800">
-                    将创建自定义服务: {inputValue}
+                    Will create custom service: {inputValue}
                   </span>
                 </div>
               );

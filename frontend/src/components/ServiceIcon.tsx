@@ -18,13 +18,13 @@ const ServiceIcon: React.FC<ServiceIconProps> = ({
   const [imageLoading, setImageLoading] = useState(true);
   const predefinedService = findServiceByName(serviceName);
   
-  // 重置状态当服务名称改变时
+  // Reset state when service name changes
   useEffect(() => {
     setImageError(false);
     setImageLoading(true);
   }, [serviceName]);
   
-  // 生成首字母图标的函数
+  // Function to render initial letter icon
   const renderInitialIcon = () => {
     const initial = serviceName.charAt(0).toUpperCase();
     const bgColor = predefinedService?.color || fallbackColor || getRandomColor(serviceName);
@@ -53,7 +53,7 @@ const ServiceIcon: React.FC<ServiceIconProps> = ({
     );
   };
   
-  // 如果有预定义服务且图片未加载失败，显示预定义图标
+  // If there's a predefined service and image loading hasn't failed, show predefined icon
   if (predefinedService?.icon_url && !imageError) {
     return (
       <div className="relative" style={{ width: size, height: size }}>
@@ -84,7 +84,7 @@ const ServiceIcon: React.FC<ServiceIconProps> = ({
     );
   }
   
-  // 生成首字母图标
+  // Generate initial letter icon
   return renderInitialIcon();
 };
 

@@ -1,4 +1,4 @@
-// 弹窗脚本 - 处理订阅信息表单和提交
+// Popup script - handles subscription information form and submission
 
 class SubscriptionPopup {
   constructor() {
@@ -9,13 +9,13 @@ class SubscriptionPopup {
   async init() {
     console.log('Initializing popup');
     
-    // 加载检测到的订阅数据
+    // Load detected subscription data
     await this.loadPendingSubscription();
     
-    // 设置事件监听
+    // Setup event listeners
     this.setupEventListeners();
     
-    // 设置默认日期
+    // Set default date
     this.setDefaultDate();
   }
   
@@ -39,16 +39,16 @@ class SubscriptionPopup {
     document.getElementById('loading-status').style.display = 'none';
     document.getElementById('subscription-form').style.display = 'block';
     
-    // 显示服务名称
+    // Display service name
     const serviceNameEl = document.getElementById('service-name');
-    serviceNameEl.textContent = this.extractedData.serviceName || '未知服务';
+    serviceNameEl.textContent = this.extractedData.serviceName || 'Unknown Service';
     
-    // 显示价格信息
+    // Display price information
     if (this.extractedData.prices && this.extractedData.prices.length > 0) {
       this.displayPriceInfo();
     }
     
-    // 预填表单数据
+    // Pre-fill form data
     this.prefillForm();
   }
   
@@ -56,7 +56,7 @@ class SubscriptionPopup {
     const priceInfoEl = document.getElementById('price-info');
     priceInfoEl.style.display = 'block';
     
-    const prices = this.extractedData.prices.slice(0, 3); // 显示最多3个价格
+    const prices = this.extractedData.prices.slice(0, 3); // Display up to 3 prices
     const priceHtml = prices.map(price => `
       <div class="price-item">
         <span>${price.text}</span>
@@ -65,24 +65,24 @@ class SubscriptionPopup {
     `).join('');
     
     priceInfoEl.innerHTML = `
-      <strong style="display: block; margin-bottom: 8px;">检测到的价格:</strong>
+      <strong style="display: block; margin-bottom: 8px;">Detected prices:</strong>
       ${priceHtml}
     `;
   }
   
   prefillForm() {
-    // 预填计费周期
+    // Pre-fill billing cycle
     if (this.extractedData.billingOptions && this.extractedData.billingOptions.length > 0) {
       const billingCycle = this.extractedData.billingOptions[0];
       document.getElementById('billing-cycle').value = billingCycle;
     }
     
-    // 预填价格
+    // Pre-fill price
     if (this.extractedData.prices && this.extractedData.prices.length > 0) {
       const price = this.extractedData.prices[0];
       document.getElementById('cost').value = price.amount;
       
-      // 设置对应的计费周期
+      // Set corresponding billing cycle
       if (price.period !== 'unknown') {
         document.getElementById('billing-cycle').value = price.period;
       }
@@ -100,13 +100,13 @@ class SubscriptionPopup {
   }
   
   setupEventListeners() {
-    // 表单提交
+    // Form submission
     document.getElementById('subscription-data-form').addEventListener('submit', (e) => {
       e.preventDefault();
       this.handleFormSubmit();
     });
     
-    // 计费周期变化时更新费用标签
+    // Update cost label when billing cycle changes
     document.getElementById('billing-cycle').addEventListener('change', (e) => {
       this.updateCostLabel(e.target.value);
     });
@@ -115,11 +115,11 @@ class SubscriptionPopup {
   updateCostLabel(billingCycle) {
     const costLabel = document.querySelector('label[for="cost"]');
     if (billingCycle === 'yearly') {
-      costLabel.textContent = '年费金额';
+      costLabel.textContent = 'Annual Amount';
     } else if (billingCycle === 'monthly') {
-      costLabel.textContent = '月费金额';
+      costLabel.textContent = 'Monthly Amount';
     } else {
-      costLabel.textContent = '费用';
+      costLabel.textContent = 'Cost';
     }
   }
   
@@ -128,46 +128,46 @@ class SubscriptionPopup {
     const errorEl = document.getElementById('error-message');
     const successEl = document.getElementById('success-message');
     
-    // 隐藏之前的消息
+    // Hide previous messages
     errorEl.style.display = 'none';
     successEl.style.display = 'none';
     
-    // 禁用提交按钮
+    // Disable submit button
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<div class="loading-spinner"></div>提交中...';
+    submitBtn.innerHTML = '<div class="loading-spinner"></div>Submitting...';
     
     try {
-      // 收集表单数据
+      // Collect form data
       const formData = this.collectFormData();
       
-      // 验证数据
+      // Validate data
       if (!this.validateFormData(formData)) {
-        throw new Error('请填写所有必需字段');
+        throw new Error('Please fill in all required fields');
       }
       
-      // 提交到主应用
+      // Submit to main application
       await this.submitToMainApp(formData);
       
-      // 显示成功消息
-      successEl.textContent = '订阅添加成功！';
+      // Show success message
+      successEl.textContent = 'Subscription added successfully!';
       successEl.style.display = 'block';
       
-      // 清理存储的数据
+      // Clean up stored data
       await chrome.storage.local.remove(['pendingSubscription']);
       
-      // 延迟关闭窗口
+      // Delay window close
       setTimeout(() => {
         window.close();
       }, 1500);
       
     } catch (error) {
       console.error('Form submission error:', error);
-      errorEl.textContent = error.message || '提交失败，请重试';
+      errorEl.textContent = error.message || 'Submission failed, please try again';
       errorEl.style.display = 'block';
     } finally {
-      // 恢复提交按钮
+      // Restore submit button
       submitBtn.disabled = false;
-      submitBtn.textContent = '添加订阅';
+      submitBtn.textContent = 'Add Subscription';
     }
   }
   
@@ -176,7 +176,7 @@ class SubscriptionPopup {
     const billingCycle = document.getElementById('billing-cycle').value;
     
     return {
-      serviceName: this.extractedData?.serviceName || '未知服务',
+      serviceName: this.extractedData?.serviceName || 'Unknown Service',
       category: this.extractedData?.category || 'Other',
       account: document.getElementById('account').value,
       cost: cost,
@@ -196,7 +196,7 @@ class SubscriptionPopup {
   }
   
   async submitToMainApp(data) {
-    // 构造订阅数据
+    // Construct subscription data
     const subscriptionData = {
       service_id: 'custom',
       service: {
@@ -211,7 +211,7 @@ class SubscriptionPopup {
       monthly_cost: data.monthly_cost
     };
     
-    // 尝试发送到本地主应用
+    // Try to send to local main application
     try {
       const response = await fetch('http://localhost:5173/api/subscriptions', {
         method: 'POST',
@@ -222,7 +222,7 @@ class SubscriptionPopup {
       });
       
       if (!response.ok) {
-        throw new Error('网络请求失败');
+        throw new Error('Network request failed');
       }
       
       const result = await response.json();
@@ -231,13 +231,13 @@ class SubscriptionPopup {
     } catch (error) {
       console.log('Direct API call failed, trying alternative method:', error);
       
-      // 如果直接API调用失败，尝试通过消息传递
+      // If direct API call fails, try alternative method via message passing
       await this.submitViaMessage(subscriptionData);
     }
   }
   
   async submitViaMessage(subscriptionData) {
-    // 存储数据供主应用读取
+    // Store data for main application to read
     await chrome.storage.local.set({
       'newSubscription': {
         ...subscriptionData,
@@ -245,7 +245,7 @@ class SubscriptionPopup {
       }
     });
     
-    // 通知主应用有新订阅数据
+    // Notify main application of new subscription data
     chrome.runtime.sendMessage({
       action: 'newSubscriptionAdded',
       data: subscriptionData
@@ -253,7 +253,7 @@ class SubscriptionPopup {
   }
 }
 
-// 初始化弹窗
+// Initialize popup
 document.addEventListener('DOMContentLoaded', () => {
   new SubscriptionPopup();
 });

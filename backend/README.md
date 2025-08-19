@@ -2,7 +2,7 @@
 
 A modern FastAPI-based backend service for managing subscription services with intelligent Natural Language Processing (NLP) capabilities, PostgreSQL database integration, and comprehensive analytics.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.9+
@@ -38,24 +38,24 @@ The API will be available at `http://localhost:8000`
 - API Documentation: `http://localhost:8000/docs`
 - Alternative Docs: `http://localhost:8000/redoc`
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 backend/
-├── main.py                 # FastAPI application entry point
-├── database.py             # Database configuration and session management
-├── models.py               # SQLAlchemy database models
-├── schemas.py              # Pydantic schemas for API validation
-├── openrouter_client.py    # NLP integration with OpenRouter API
-├── modal_app.py            # Modal deployment configuration
-├── requirements.txt        # Python dependencies
-├── Dockerfile             # Docker configuration
-├── .env                   # Environment variables (local)
-├── .env.example           # Environment variables template
-└── subscriptions.db       # SQLite database (development fallback)
+|-- main.py                 # FastAPI application entry point
+|-- database.py             # Database configuration and session management
+|-- models.py               # SQLAlchemy database models
+|-- schemas.py              # Pydantic schemas for API validation
+|-- openrouter_client.py    # NLP integration with OpenRouter API
+|-- modal_app.py            # Modal deployment configuration
+|-- requirements.txt        # Python dependencies
+|-- Dockerfile             # Docker configuration
+|-- .env                   # Environment variables (local)
+|-- .env.example           # Environment variables template
+`-- subscriptions.db       # SQLite database (development fallback)
 ```
 
-## 🗄️ Database Architecture
+## Database Architecture
 
 ### Models
 
@@ -121,7 +121,7 @@ engine = create_async_engine(
 - Automatic table creation
 - Migration support with Alembic
 
-## 📡 API Endpoints
+## API Endpoints
 
 ### Subscription Management
 
@@ -242,7 +242,7 @@ engine = create_async_engine(
 **Request Body**:
 ```json
 {
-  "text": "添加amazon prime 服务 一个月6.99 前三个月免费"
+  "text": "Add Amazon Prime service, $6.99 monthly with 3 months free"
 }
 ```
 
@@ -250,7 +250,7 @@ engine = create_async_engine(
 ```json
 {
   "success": true,
-  "message": "订阅信息已成功添加",
+  "message": "Subscription information successfully added",
   "subscription": {
     "id": "123",
     "service_id": "456",
@@ -282,10 +282,10 @@ engine = create_async_engine(
 
 **Supported Input Examples**:
 - English: "Subscribe to Netflix Premium for $19.99 per month"
-- Chinese: "添加Spotify Premium订阅，每月9.99美元，10号扣费"
+- Example: "Add Spotify Premium subscription, $9.99 monthly, billing on 10th"
 - Trial periods: "GitHub Pro with 30-day free trial, $7/month after"
 
-## 🤖 NLP Integration
+## NLP Integration
 
 ### OpenRouter Client
 
@@ -324,7 +324,7 @@ The NLP system has built-in recognition for:
 - **GitHub**: Pro and team subscriptions
 - **Microsoft**: Office 365 and Azure services
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -381,7 +381,7 @@ DATABASE_URL=postgresql+asyncpg://user:password@ep-region-id.aws.neon.tech/datab
 - `python-multipart==0.0.9`: File upload support
 - `aiosqlite==0.21.0`: SQLite async support (development)
 
-## 🚀 Deployment
+## Deployment
 
 ### Local Development
 
@@ -455,7 +455,7 @@ modal deploy modal_app.py
 - **Fly.io**: Global edge deployment
 - **Heroku**: Traditional PaaS deployment
 
-## 🔒 Security & Best Practices
+## Security & Best Practices
 
 ### Security Features
 
@@ -514,7 +514,7 @@ except SQLAlchemyError as e:
     )
 ```
 
-## 📊 Monitoring & Logging
+## Monitoring & Logging
 
 ### Logging Configuration
 
@@ -570,7 +570,7 @@ async def database_health(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=503, detail="Database unhealthy")
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Unit Testing
 
@@ -626,7 +626,7 @@ async def test_db():
     await engine.dispose()
 ```
 
-## 🔧 Development Tools
+## Development Tools
 
 ### API Documentation
 
@@ -667,7 +667,7 @@ mypy .
 flake8 .
 ```
 
-## 📚 Additional Resources
+## Additional Resources
 
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
 - [SQLAlchemy Async Documentation](https://docs.sqlalchemy.org/en/14/orm/extensions/asyncio.html)
@@ -675,7 +675,7 @@ flake8 .
 - [OpenRouter API Documentation](https://openrouter.ai/docs)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 
-## 🤝 Contributing
+## Contributing
 
 1. Follow PEP 8 style guidelines
 2. Add type hints to all functions
@@ -683,6 +683,6 @@ flake8 .
 4. Update documentation for API changes
 5. Use descriptive commit messages
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.

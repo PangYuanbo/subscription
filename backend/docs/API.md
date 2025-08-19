@@ -2,7 +2,7 @@
 
 This document provides comprehensive documentation for the Subscription Manager backend API endpoints, request/response formats, and integration guidelines.
 
-## 🌐 API Overview
+## API Overview
 
 ### Base Information
 
@@ -38,7 +38,7 @@ All API responses follow a consistent format:
 }
 ```
 
-## 📋 Core Endpoints
+## Core Endpoints
 
 ### Health Check
 
@@ -58,7 +58,7 @@ All API responses follow a consistent format:
 
 ---
 
-## 🔖 Subscription Management
+## Subscription Management
 
 ### Get All Subscriptions
 
@@ -237,7 +237,7 @@ curl -X DELETE "http://localhost:8000/subscriptions/1"
 
 ---
 
-## 📊 Analytics
+## Analytics
 
 ### Get Analytics Data
 
@@ -295,7 +295,7 @@ curl -X DELETE "http://localhost:8000/subscriptions/1"
 
 **Response Fields**:
 - `total_monthly_cost`: Float - Sum of all monthly costs
-- `total_annual_cost`: Float - Monthly cost × 12
+- `total_annual_cost`: Float - Monthly cost * 12
 - `category_breakdown`: Array - Spending breakdown by service category
 - `monthly_trend`: Array - Historical spending trend (last 6 months)
 - `service_count`: Integer - Total number of active subscriptions
@@ -312,7 +312,7 @@ curl -X GET "http://localhost:8000/analytics" \
 
 ---
 
-## 🤖 Natural Language Processing
+## Natural Language Processing
 
 ### Parse Natural Language Input
 
@@ -322,7 +322,7 @@ curl -X GET "http://localhost:8000/analytics" \
 **Request Body**:
 ```json
 {
-  "text": "添加amazon prime 服务 一个月6.99 前三个月免费"
+  "text": "Add Amazon Prime service, $6.99 monthly with 3 months free"
 }
 ```
 
@@ -333,7 +333,7 @@ curl -X GET "http://localhost:8000/analytics" \
 ```json
 {
   "success": true,
-  "message": "订阅信息已成功添加",
+  "message": "Subscription information successfully added",
   "subscription": {
     "id": "123",
     "service_id": "456",
@@ -371,7 +371,7 @@ curl -X GET "http://localhost:8000/analytics" \
 ```json
 {
   "success": false,
-  "message": "无法解析订阅信息，请提供更详细的信息",
+  "message": "Unable to parse subscription information, please provide more details",
   "subscription": null,
   "parsed_data": {
     "service_name": null,
@@ -393,9 +393,9 @@ curl -X GET "http://localhost:8000/analytics" \
    - "Microsoft Office 365 yearly subscription for $99.99 with 30-day trial"
 
 2. **Chinese Examples**:
-   - "添加Spotify Premium订阅，每月9.99美元，10号扣费"
-   - "订阅Adobe Creative Cloud，年费599美元，设计师账户"
-   - "Netflix标准版订阅，家庭账户，每月15.99美元"
+   - "Add Spotify Premium subscription, $9.99 monthly, billing on 10th"
+   - "Subscribe to Adobe Creative Cloud, $599 annually, designer account"
+   - "Netflix Standard subscription, family account, $15.99 monthly"
 
 3. **Trial Period Examples**:
    - "Amazon Prime for $6.99/month with 3 months free trial"
@@ -421,7 +421,7 @@ curl -X POST "http://localhost:8000/subscriptions/nlp" \
 curl -X POST "http://localhost:8000/subscriptions/nlp" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "添加Netflix标准版订阅，每月15.99美元，家庭账户"
+    "text": "Add Netflix Standard subscription, $15.99 monthly, family account"
   }'
 
 # Trial period input
@@ -434,7 +434,7 @@ curl -X POST "http://localhost:8000/subscriptions/nlp" \
 
 ---
 
-## 📜 Data Schemas
+## Data Schemas
 
 ### Service Schema
 
@@ -523,7 +523,7 @@ interface NLPResponse {
 
 ---
 
-## ⚠️ Error Handling
+## Error Handling
 
 ### HTTP Status Codes
 
@@ -578,7 +578,7 @@ interface NLPResponse {
 
 ---
 
-## 🔒 Rate Limiting
+## Rate Limiting
 
 ### General Endpoints
 - **Limit**: 100 requests per minute per IP
@@ -606,7 +606,7 @@ When rate limit is exceeded:
 
 ---
 
-## 🔐 Authentication (Future)
+## Authentication (Future)
 
 Currently, the API does not require authentication. For production use, implement:
 
@@ -632,7 +632,7 @@ curl -X GET "http://localhost:8000/subscriptions" \
 
 ---
 
-## 🧪 Testing the API
+## Testing the API
 
 ### Using curl
 
@@ -717,7 +717,7 @@ nlp_response = requests.post(
 
 ---
 
-## 📚 Integration Examples
+## Integration Examples
 
 ### Frontend Integration
 
@@ -826,7 +826,7 @@ class SubscriptionWebhook:
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 

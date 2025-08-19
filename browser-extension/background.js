@@ -1,8 +1,8 @@
-// 背景脚本 - 处理插件生命周期和消息传递
+// Background script - handles extension lifecycle and message passing
 
-// 订阅服务检测规则
+// Subscription service detection rules
 const SUBSCRIPTION_PATTERNS = {
-  // URL 模式
+  // URL patterns
   urlPatterns: [
     /checkout|billing|subscribe|pricing|plans|payment/i,
     /netflix\.com\/signup/i,
@@ -14,9 +14,9 @@ const SUBSCRIPTION_PATTERNS = {
     /cloud\.google\.com\/pricing/i
   ],
   
-  // 支付软件和支付链接模式
+  // Payment software and payment link patterns
   paymentPatterns: [
-    // 支付服务商
+    // Payment service providers
     /stripe\.com\/checkout/i,
     /checkout\.stripe\.com/i,
     /paypal\.com\/checkout/i,
@@ -34,20 +34,20 @@ const SUBSCRIPTION_PATTERNS = {
     /fastspring\.com\/checkout/i,
     /cleverbridge\.com/i,
     
-    // 中国支付平台
+    // Chinese payment platforms
     /alipay\.com/i,
     /pay\.weixin\.qq\.com/i,
     /wxpay\.wxutil\.com/i,
     /unionpay\.com/i,
     
-    // 平台内支付
+    // Platform internal payments
     /apple\.com\/.*\/checkout/i,
     /store\.steampowered\.com\/checkout/i,
     /play\.google\.com\/store\/account/i,
     /amazon\.com\/gp\/buy/i,
     /microsoft\.com\/.*\/checkout/i,
     
-    // 通用支付关键词
+    // General payment keywords
     /\/pay\//i,
     /\/payment\//i,
     /\/checkout\//i,
@@ -58,23 +58,23 @@ const SUBSCRIPTION_PATTERNS = {
     /\/billing\//i
   ],
   
-  // 页面内容关键词
+  // Page content keywords
   contentKeywords: [
     'subscribe', 'subscription', 'billing', 'payment',
     'monthly', 'yearly', 'annual', 'premium', 'pro',
     'upgrade', 'checkout', 'purchase', 'buy now',
-    '订阅', '付费', '升级', '购买', '月费', '年费'
+    'subscription', 'payment', 'upgrade', 'purchase', 'monthly fee', 'annual fee'
   ],
   
-  // 价格匹配模式
+  // Price matching patterns
   pricePatterns: [
     /\$\d+(?:\.\d{2})?[\s]*(?:\/(?:month|year|mo|yr))?/gi,
-    /¥\d+(?:\.\d{2})?[\s]*(?:\/(?:月|年))?/gi,
+    /¥\d+(?:\.\d{2})?[\s]*(?:\/(?:month|year))?/gi,
     /€\d+(?:\.\d{2})?[\s]*(?:\/(?:month|year|mo|yr))?/gi
   ]
 };
 
-// 服务识别映射
+// Service identification mapping
 const SERVICE_MAPPING = {
   'netflix.com': { name: 'Netflix', category: 'Entertainment' },
   'spotify.com': { name: 'Spotify', category: 'Entertainment' },
@@ -104,7 +104,7 @@ const SERVICE_MAPPING = {
   'duolingo.com': { name: 'Duolingo', category: 'Education' }
 };
 
-// 监听来自内容脚本的消息
+// Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Background received message:', request);
   
@@ -134,32 +134,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
   }
   
-  return true; // 保持消息通道开放
+  return true; // Keep message channel open
 });
 
-// 监听标签页更新
+// Listen for tab updates
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
     checkIfSubscriptionPage(tab);
   }
 });
 
-// 检查是否为订阅服务页面
+// Check if this is a subscription service page
 function checkIfSubscriptionPage(tab) {
   const url = new URL(tab.url);
   const domain = url.hostname;
   
-  // 检查URL模式
+  // Check URL patterns
   const isSubscriptionUrl = SUBSCRIPTION_PATTERNS.urlPatterns.some(pattern => 
     pattern.test(tab.url)
   );
   
-  // 检查支付链接模式
+  // Check payment link patterns
   const isPaymentUrl = SUBSCRIPTION_PATTERNS.paymentPatterns.some(pattern => 
     pattern.test(tab.url)
   );
   
-  // 检查是否为已知服务域名
+  // Check if this is a known service domain
   const isKnownService = Object.keys(SERVICE_MAPPING).some(serviceDomain => 
     domain.includes(serviceDomain)
   );
@@ -167,7 +167,7 @@ function checkIfSubscriptionPage(tab) {
   if (isSubscriptionUrl || isPaymentUrl || isKnownService) {
     console.log('Detected potential subscription/payment page:', tab.url);
     
-    // 注入内容脚本进行深度检测
+    // Inject content script for deep detection
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: ['content.js']
@@ -177,17 +177,17 @@ function checkIfSubscriptionPage(tab) {
   }
 }
 
-// 处理订阅检测
+// Handle subscription detection
 function handleSubscriptionDetection(data, tab) {
   console.log('Processing subscription detection:', data);
   
-  // 识别服务信息
+  // Identify service information
   const serviceInfo = identifyService(tab.url, data.pageTitle);
   
-  // 提取价格信息
+  // Extract price information
   const priceInfo = extractPriceInfo(data.content);
   
-  // 合并提取的信息
+  // Merge extracted information
   const extractedInfo = {
     ...serviceInfo,
     ...priceInfo,
@@ -197,23 +197,23 @@ function handleSubscriptionDetection(data, tab) {
   
   console.log('Extracted subscription info:', extractedInfo);
   
-  // 显示通知
+  // Show notification
   showNotification(
-    '检测到订阅服务',
-    `发现 ${extractedInfo.serviceName} 订阅页面`
+    'Detected subscription service',
+    `Found ${extractedInfo.serviceName} subscription page`
   );
   
-  // 存储提取的信息
+  // Store extracted information
   chrome.storage.local.set({
     'pendingSubscription': extractedInfo
   });
 }
 
-// 识别服务信息
+// Identify service information
 function identifyService(url, pageTitle) {
   const domain = new URL(url).hostname;
   
-  // 查找匹配的服务
+  // Find matching service
   for (const [serviceDomain, serviceInfo] of Object.entries(SERVICE_MAPPING)) {
     if (domain.includes(serviceDomain)) {
       return {
@@ -224,7 +224,7 @@ function identifyService(url, pageTitle) {
     }
   }
   
-  // 如果没有匹配的服务，尝试从页面标题提取
+  // If no matching service found, try to extract from page title
   const titleWords = pageTitle.split(/\s+/);
   const serviceName = titleWords[0] || domain.split('.')[0];
   
@@ -235,19 +235,19 @@ function identifyService(url, pageTitle) {
   };
 }
 
-// 提取价格信息
+// Extract price information
 function extractPriceInfo(content) {
   const priceInfo = {};
   
-  // 使用正则表达式提取价格
+  // Use regular expressions to extract prices
   SUBSCRIPTION_PATTERNS.pricePatterns.forEach(pattern => {
     const matches = content.match(pattern);
     if (matches && matches.length > 0) {
-      // 分析价格和计费周期
+      // Analyze price and billing cycle
       matches.forEach(match => {
         const price = parseFloat(match.replace(/[^\d.]/g, ''));
-        const isYearly = /year|annual|yr|年/i.test(match);
-        const isMonthly = /month|monthly|mo|月/i.test(match);
+        const isYearly = /year|annual|yr/i.test(match);
+        const isMonthly = /month|monthly|mo/i.test(match);
         
         if (isYearly) {
           priceInfo.yearlyPrice = price;
@@ -261,7 +261,7 @@ function extractPriceInfo(content) {
   return priceInfo;
 }
 
-// 显示通知
+// Show notification
 function showNotification(title, message) {
   chrome.notifications.create({
     type: 'basic',
@@ -271,17 +271,17 @@ function showNotification(title, message) {
   });
 }
 
-// 处理支付检测
+// Handle payment detection
 function handlePaymentDetection(data, tab) {
   console.log('Processing payment detection:', data);
   
-  // 识别服务信息
+  // Identify service information
   const serviceInfo = identifyService(tab.url, data.pageTitle);
   
-  // 提取支付相关信息
+  // Extract payment-related information
   const paymentInfo = extractPaymentInfo(data);
   
-  // 合并提取的信息
+  // Merge extracted information
   const extractedInfo = {
     ...serviceInfo,
     ...paymentInfo,
@@ -292,31 +292,31 @@ function handlePaymentDetection(data, tab) {
   
   console.log('Extracted payment info:', extractedInfo);
   
-  // 显示通知
+  // Show notification
   showNotification(
-    '🔔 检测到支付行为',
-    `正在为 ${extractedInfo.serviceName} 付费，是否记录订阅？`
+    '🔔 Payment activity detected',
+    `Making payment for ${extractedInfo.serviceName}, record subscription?`
   );
   
-  // 存储提取的信息
+  // Store extracted information
   chrome.storage.local.set({
     'pendingSubscription': extractedInfo
   });
   
-  // 自动弹出订阅表单
+  // Automatically show subscription form
   setTimeout(() => {
     openSubscriptionPopup(extractedInfo);
   }, 1000);
 }
 
-// 处理订阅行为
+// Handle subscription action
 function handleSubscriptionAction(data, tab) {
   console.log('Processing subscription action:', data);
   
-  // 识别服务信息
+  // Identify service information
   const serviceInfo = identifyService(tab.url, data.pageTitle);
   
-  // 合并信息
+  // Merge information
   const extractedInfo = {
     ...serviceInfo,
     ...data,
@@ -327,30 +327,30 @@ function handleSubscriptionAction(data, tab) {
   
   console.log('Extracted subscription action info:', extractedInfo);
   
-  // 显示通知
+  // Show notification
   showNotification(
-    '🎯 检测到订阅操作',
-    `检测到 ${extractedInfo.serviceName} 订阅操作`
+    '🎯 Subscription action detected',
+    `Detected ${extractedInfo.serviceName} subscription action`
   );
   
-  // 存储提取的信息
+  // Store extracted information
   chrome.storage.local.set({
     'pendingSubscription': extractedInfo
   });
   
-  // 自动弹出订阅表单
+  // Automatically show subscription form
   setTimeout(() => {
     openSubscriptionPopup(extractedInfo);
   }, 500);
 }
 
-// 提取支付相关信息
+// Extract payment-related information
 function extractPaymentInfo(data) {
   const paymentInfo = {
     isPaymentFlow: true
   };
   
-  // 从页面内容提取金额
+  // Extract amount from page content
   if (data.content) {
     const priceMatches = data.content.match(/\$\d+(?:\.\d{2})?/g);
     if (priceMatches && priceMatches.length > 0) {
@@ -359,7 +359,7 @@ function extractPaymentInfo(data) {
     }
   }
   
-  // 检测支付方式
+  // Detect payment methods
   if (data.content) {
     const paymentMethods = [];
     if (/credit card|visa|mastercard|amex/i.test(data.content)) {
@@ -374,10 +374,10 @@ function extractPaymentInfo(data) {
     if (/google pay/i.test(data.content)) {
       paymentMethods.push('google_pay');
     }
-    if (/alipay|支付宝/i.test(data.content)) {
+    if (/alipay/i.test(data.content)) {
       paymentMethods.push('alipay');
     }
-    if (/wechat|微信/i.test(data.content)) {
+    if (/wechat/i.test(data.content)) {
       paymentMethods.push('wechat_pay');
     }
     
@@ -387,7 +387,7 @@ function extractPaymentInfo(data) {
   return paymentInfo;
 }
 
-// 打开订阅弹窗
+// Open subscription popup
 function openSubscriptionPopup(data) {
   chrome.windows.create({
     url: chrome.runtime.getURL('popup.html'),

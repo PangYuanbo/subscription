@@ -28,19 +28,19 @@ export const calculateTrialStatus = (subscription: Subscription): TrialStatus | 
   let statusColor: 'green' | 'yellow' | 'red' | 'gray';
 
   if (isExpired) {
-    statusText = '试用已过期';
+    statusText = 'Trial expired';
     statusColor = 'red';
   } else if (daysRemaining === 0) {
-    statusText = '今天到期';
+    statusText = 'Expires today';
     statusColor = 'red';
   } else if (daysRemaining <= 3) {
-    statusText = `还剩 ${daysRemaining} 天`;
+    statusText = `${daysRemaining} days left`;
     statusColor = 'yellow';
   } else if (daysRemaining <= 7) {
-    statusText = `还剩 ${daysRemaining} 天`;
+    statusText = `${daysRemaining} days left`;
     statusColor = 'yellow';
   } else {
-    statusText = `还剩 ${daysRemaining} 天`;
+    statusText = `${daysRemaining} days left`;
     statusColor = 'green';
   }
 
@@ -61,11 +61,11 @@ export const formatTrialPeriod = (startDate: string, endDate: string): string =>
 };
 
 export const getCommonTrialDurations = () => [
-  { label: '7天', days: 7 },
-  { label: '14天', days: 14 },
-  { label: '30天', days: 30 },
-  { label: '60天', days: 60 },
-  { label: '90天', days: 90 },
+  { label: '7 days', days: 7 },
+  { label: '14 days', days: 14 },
+  { label: '30 days', days: 30 },
+  { label: '60 days', days: 60 },
+  { label: '90 days', days: 90 },
 ];
 
 export const calculateTrialEndDate = (startDate: string, durationDays: number): string => {

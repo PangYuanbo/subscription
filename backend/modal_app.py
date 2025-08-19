@@ -6,21 +6,33 @@ image = modal.Image.debian_slim().pip_install_from_requirements("requirements.tx
 
 @app.function(
     image=image,
-    secrets=[modal.Secret.from_name("neon-db-url"), modal.Secret.from_name("openrouter-api-key")],
+    secrets=[
+        modal.Secret.from_name("neon-db-url"), 
+        modal.Secret.from_name("openrouter-api-key"),
+        modal.Secret.from_name("auth0-config")
+    ],
     scaledown_window=300,
 )
 @modal.asgi_app()
 def fastapi_app():
-    from fastapi import FastAPI, HTTPException, Depends
+    from fastapi import FastAPI, HTTPException, Depends, Header
     from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
     from sqlalchemy.orm import declarative_base
-    from sqlalchemy import select, Column, Integer, String, Float, DateTime, ForeignKey, func, Boolean
+    from sqlalchemy import select, Column, Integer, String, Float, DateTime, ForeignKey, func, Boolean, Text
     from pydantic import BaseModel
     from typing import List, Optional
     from datetime import datetime, timedelta
     from enum import Enum
     import os
+    import jwt
+    import httpx
+    from functools import wraps
+    
+    # Auth0 Configuration
+    AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
+    AUTH0_AUDIENCE = os.getenv("AUTH0_AUDIENCE")
     
     # Database setup
     DATABASE_URL = os.getenv("DATABASE_URL")
@@ -43,6 +55,19 @@ def fastapi_app():
     Base = declarative_base()
     
     # Models
+    class User(Base):
+        __tablename__ = "users"
+        
+        id = Column(Integer, primary_key=True, index=True)
+        auth0_user_id = Column(String, unique=True, nullable=False, index=True)
+        email = Column(String, unique=True, nullable=False, index=True)
+        name = Column(String, nullable=True)
+        picture = Column(String, nullable=True)
+        nickname = Column(String, nullable=True)
+        last_login = Column(DateTime, nullable=True)
+        created_at = Column(DateTime, default=func.now())
+        updated_at = Column(DateTime)
+
     class Service(Base):
         __tablename__ = "services"
         
@@ -57,6 +82,7 @@ def fastapi_app():
         __tablename__ = "subscriptions"
         
         id = Column(Integer, primary_key=True, index=True)
+        user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
         service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
         account = Column(String, nullable=False)
         payment_date = Column(DateTime, nullable=False)
@@ -142,6 +168,95 @@ def fastapi_app():
         subscription: Optional[SubscriptionResponse] = None
         parsed_data: Optional[dict] = None
     
+    # Auth0 JWT validation
+    security = HTTPBearer()
+    
+    async def get_auth0_public_key():
+        """Get Auth0 public key for JWT verification"""
+        url = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            return response.json()
+    
+    async def verify_jwt(credentials: HTTPAuthorizationCredentials = Depends(security)):
+        """Verify JWT token and return user info"""
+        if not AUTH0_DOMAIN or not AUTH0_AUDIENCE:
+            # If Auth0 is not configured, return mock user
+            return {"sub": "mock-user", "email": "test@example.com", "name": "Test User"}
+            
+        try:
+            # Get the token from the Authorization header
+            token = credentials.credentials
+            
+            # Get Auth0 public key
+            jwks = await get_auth0_public_key()
+            
+            # Decode the token header to get the key ID
+            unverified_header = jwt.get_unverified_header(token)
+            key_id = unverified_header["kid"]
+            
+            # Find the public key
+            public_key = None
+            for key in jwks["keys"]:
+                if key["kid"] == key_id:
+                    public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+                    break
+            
+            if not public_key:
+                raise HTTPException(status_code=401, detail="Public key not found")
+            
+            # Verify and decode the token
+            payload = jwt.decode(
+                token,
+                public_key,
+                algorithms=["RS256"],
+                audience=AUTH0_AUDIENCE,
+                issuer=f"https://{AUTH0_DOMAIN}/"
+            )
+            
+            return payload
+            
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Token has expired")
+        except jwt.InvalidTokenError:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        except Exception as e:
+            raise HTTPException(status_code=401, detail=f"Token validation failed: {str(e)}")
+
+    async def get_or_create_user(user_info: dict, db: AsyncSession):
+        """Get or create user from Auth0 info"""
+        auth0_user_id = user_info.get("sub")
+        email = user_info.get("email")
+        
+        if not auth0_user_id or not email:
+            raise HTTPException(status_code=400, detail="Invalid user information")
+        
+        # Try to find existing user
+        result = await db.execute(
+            select(User).where(User.auth0_user_id == auth0_user_id)
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            # Create new user
+            user = User(
+                auth0_user_id=auth0_user_id,
+                email=email,
+                name=user_info.get("name"),
+                picture=user_info.get("picture"),
+                nickname=user_info.get("nickname"),
+                last_login=datetime.utcnow()
+            )
+            db.add(user)
+            await db.flush()
+            await db.refresh(user)
+        else:
+            # Update last login
+            user.last_login = datetime.utcnow()
+            await db.flush()
+        
+        return user
+
     # Database helper
     async def get_db():
         async with AsyncSessionLocal() as session:
@@ -173,10 +288,38 @@ def fastapi_app():
     async def root():
         return {"message": "Subscription Manager API", "status": "running"}
     
+    @fastapi_app.get("/user/profile")
+    async def get_user_profile(
+        db: AsyncSession = Depends(get_db),
+        user_info: dict = Depends(verify_jwt)
+    ):
+        """Get current user profile"""
+        current_user = await get_or_create_user(user_info, db)
+        
+        return {
+            "id": str(current_user.id),
+            "auth0_user_id": current_user.auth0_user_id,
+            "email": current_user.email,
+            "name": current_user.name,
+            "picture": current_user.picture,
+            "nickname": current_user.nickname,
+            "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+            "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
+        }
+    
     @fastapi_app.get("/subscriptions", response_model=List[SubscriptionResponse])
-    async def get_subscriptions(db: AsyncSession = Depends(get_db)):
+    async def get_subscriptions(
+        db: AsyncSession = Depends(get_db),
+        user_info: dict = Depends(verify_jwt)
+    ):
+        # Get or create user
+        current_user = await get_or_create_user(user_info, db)
+        
+        # Get user's subscriptions only
         result = await db.execute(
-            select(Subscription).order_by(Subscription.created_at.desc())
+            select(Subscription).where(Subscription.user_id == current_user.id)
+            .order_by(Subscription.created_at.desc())
         )
         subscriptions = result.scalars().all()
         
@@ -215,8 +358,12 @@ def fastapi_app():
     @fastapi_app.post("/subscriptions", response_model=SubscriptionResponse)
     async def create_subscription(
         subscription: SubscriptionCreate,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
+        user_info: dict = Depends(verify_jwt)
     ):
+        # Get or create user
+        current_user = await get_or_create_user(user_info, db)
+        
         service_result = await db.execute(
             select(Service).where(Service.id == subscription.service_id)
         )
@@ -232,6 +379,7 @@ def fastapi_app():
             db.add(service)
         
         db_subscription = Subscription(
+            user_id=current_user.id,  # Associate with current user
             service_id=subscription.service_id,
             account=subscription.account,
             payment_date=datetime.fromisoformat(subscription.payment_date),
@@ -274,10 +422,17 @@ def fastapi_app():
     async def update_subscription(
         subscription_id: str,
         subscription: SubscriptionUpdate,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
+        user_info: dict = Depends(verify_jwt)
     ):
+        # Get or create user
+        current_user = await get_or_create_user(user_info, db)
+        
         result = await db.execute(
-            select(Subscription).where(Subscription.id == int(subscription_id))
+            select(Subscription).where(
+                Subscription.id == int(subscription_id),
+                Subscription.user_id == current_user.id  # Only user's own subscriptions
+            )
         )
         db_subscription = result.scalar_one_or_none()
         
@@ -338,10 +493,17 @@ def fastapi_app():
     @fastapi_app.delete("/subscriptions/{subscription_id}")
     async def delete_subscription(
         subscription_id: str,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
+        user_info: dict = Depends(verify_jwt)
     ):
+        # Get or create user
+        current_user = await get_or_create_user(user_info, db)
+        
         result = await db.execute(
-            select(Subscription).where(Subscription.id == int(subscription_id))
+            select(Subscription).where(
+                Subscription.id == int(subscription_id),
+                Subscription.user_id == current_user.id  # Only user's own subscriptions
+            )
         )
         db_subscription = result.scalar_one_or_none()
         
@@ -354,8 +516,17 @@ def fastapi_app():
         return {"message": "Subscription deleted successfully"}
     
     @fastapi_app.get("/analytics", response_model=AnalyticsResponse)
-    async def get_analytics(db: AsyncSession = Depends(get_db)):
-        result = await db.execute(select(Subscription))
+    async def get_analytics(
+        db: AsyncSession = Depends(get_db),
+        user_info: dict = Depends(verify_jwt)
+    ):
+        # Get or create user
+        current_user = await get_or_create_user(user_info, db)
+        
+        # Get user's subscriptions only
+        result = await db.execute(
+            select(Subscription).where(Subscription.user_id == current_user.id)
+        )
         subscriptions = result.scalars().all()
         
         total_monthly_cost = sum(sub.monthly_cost for sub in subscriptions)
@@ -412,25 +583,25 @@ def fastapi_app():
             }
         
         async def parse_subscription_text(self, text: str) -> dict:
-            prompt = f"""请解析以下订阅服务描述，提取关键信息并返回JSON格式：
+            prompt = f"""Parse the following subscription service description and extract key information in JSON format:
 
-            输入文本：{text}
+            Input text: {text}
 
-            请返回以下格式的JSON（只返回JSON，不要其他内容）：
+            Please return JSON in the following format (JSON only, no other content):
             {{
-                "service_name": "服务名称",
-                "service_category": "服务分类（如Entertainment, Productivity, Development等）",
-                "account": "账户/邮箱（如果提到）",
-                "monthly_cost": 月费金额（数字），
-                "payment_date": "付费日期（YYYY-MM-DD格式，如果没有具体日期，用下个月1号）",
-                "is_trial": 是否是试用期（true/false）,
-                "trial_duration_days": 试用期天数（如果是试用期）
+                "service_name": "service name",
+                "service_category": "service category (Entertainment, Productivity, Development, etc.)",
+                "account": "account/email (if mentioned)",
+                "monthly_cost": monthly cost amount (number),
+                "payment_date": "payment date (YYYY-MM-DD format, use first day of next month if no specific date)",
+                "is_trial": trial period (true/false),
+                "trial_duration_days": trial period days (if trial)
             }}
 
-            注意：
-            - 如果没有明确的金额，monthly_cost设为null
-            - 如果没有明确的账户信息，account设为空字符串
-            - 服务分类要准确，常见的有：Entertainment, Productivity, Development, Cloud, Design等
+            Notes:
+            - If no clear amount, set monthly_cost to null
+            - If no clear account info, set account to empty string
+            - Categories: Entertainment, Productivity, Development, Cloud, Design, etc.
             """
 
             try:
@@ -474,22 +645,26 @@ def fastapi_app():
     @fastapi_app.post("/subscriptions/nlp", response_model=NLPSubscriptionResponse)
     async def create_subscription_from_nlp(
         request: NLPSubscriptionRequest,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
+        user_info: dict = Depends(verify_jwt)
     ):
         try:
+            # Get or create user
+            current_user = await get_or_create_user(user_info, db)
+            
             parsed_data = await openrouter_client.parse_subscription_text(request.text)
             
             if not parsed_data or not parsed_data.get("service_name"):
                 return NLPSubscriptionResponse(
                     success=False,
-                    message="无法解析订阅信息，请提供更详细的信息",
+                    message="Unable to parse subscription information, please provide more details",
                     parsed_data=parsed_data
                 )
             
             if not parsed_data.get("monthly_cost"):
                 return NLPSubscriptionResponse(
                     success=False,
-                    message="无法确定月费用，请明确指定费用金额",
+                    message="Unable to determine monthly cost, please specify the amount",
                     parsed_data=parsed_data
                 )
             
@@ -518,6 +693,7 @@ def fastapi_app():
             
             # Create subscription
             db_subscription = Subscription(
+                user_id=current_user.id,  # Associate with current user
                 service_id=service.id,
                 account=parsed_data["account"],
                 payment_date=datetime.fromisoformat(parsed_data["payment_date"]),
@@ -558,7 +734,7 @@ def fastapi_app():
             
             return NLPSubscriptionResponse(
                 success=True,
-                message="订阅信息已成功添加",
+                message="Subscription information added successfully",
                 subscription=subscription_response,
                 parsed_data=parsed_data
             )
@@ -567,7 +743,7 @@ def fastapi_app():
             print(f"Error creating subscription from NLP: {e}")
             return NLPSubscriptionResponse(
                 success=False,
-                message=f"处理请求时发生错误: {str(e)}",
+                message=f"Error processing request: {str(e)}",
                 parsed_data=None
             )
     

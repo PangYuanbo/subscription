@@ -2,7 +2,7 @@
 
 This document provides comprehensive deployment instructions for the Subscription Manager backend across different platforms and environments.
 
-## 🚀 Deployment Overview
+## Deployment Overview
 
 ### Supported Platforms
 
@@ -24,7 +24,7 @@ This document provides comprehensive deployment instructions for the Subscriptio
 - OpenRouter API key for NLP functionality
 - Git repository access
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
 ### Dockerfile
 
@@ -163,7 +163,7 @@ EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
 ```
 
-## ☁️ Modal.com Deployment
+## Modal.com Deployment
 
 ### Modal Configuration
 
@@ -277,7 +277,7 @@ def get_modal_secrets():
     ]
 ```
 
-## 🚂 Railway Deployment
+## Railway Deployment
 
 ### Railway Configuration
 
@@ -337,7 +337,7 @@ railway logs
 railway open
 ```
 
-## 🎨 Render Deployment
+## Render Deployment
 
 ### render.yaml
 
@@ -374,7 +374,7 @@ databases:
 
 1. **Connect GitHub Repository**:
    - Go to [Render Dashboard](https://dashboard.render.com/)
-   - Click "New +" → "Web Service"
+   - Click "New +" -> "Web Service"
    - Connect your GitHub repository
 
 2. **Configure Service**:
@@ -389,7 +389,7 @@ databases:
 
 4. **Deploy**: Render automatically deploys on git push
 
-## ✈️ Fly.io Deployment
+## Fly.io Deployment
 
 ### fly.toml
 
@@ -462,7 +462,7 @@ fly scale count 2
 fly open
 ```
 
-## 🐍 Heroku Deployment
+## Heroku Deployment
 
 ### Procfile
 
@@ -509,7 +509,7 @@ heroku logs --tail
 heroku open
 ```
 
-## ☁️ AWS Deployment
+## AWS Deployment
 
 ### AWS Lambda with Mangum
 
@@ -587,7 +587,7 @@ aws ecs register-task-definition --cli-input-json file://task-definition.json
 aws ecs update-service --cluster subscription-cluster --service subscription-backend --task-definition subscription-backend
 ```
 
-## 🐙 Google Cloud Deployment
+## Google Cloud Deployment
 
 ### Cloud Run
 
@@ -658,7 +658,7 @@ gcloud run services update subscription-backend \
   --set-secrets OPENROUTER_API_KEY=openrouter-key:latest
 ```
 
-## 🔵 Azure Deployment
+## Azure Deployment
 
 ### Azure Container Instances
 
@@ -709,7 +709,7 @@ gcloud run services update subscription-backend \
 }
 ```
 
-## 🔧 Environment Configuration
+## Environment Configuration
 
 ### Production Environment Variables
 
@@ -758,7 +758,7 @@ LOG_LEVEL=debug
 CORS_ORIGINS=*
 ```
 
-## 📊 Health Checks and Monitoring
+## Health Checks and Monitoring
 
 ### Health Check Endpoint
 
@@ -843,7 +843,7 @@ async def metrics():
     return Response(generate_latest(), media_type="text/plain")
 ```
 
-## 🔐 Security Considerations
+## Security Considerations
 
 ### Production Security Checklist
 
@@ -886,7 +886,7 @@ def configure_security(app):
     )
 ```
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Deployment Issues
 

@@ -6,8 +6,9 @@ python-dotenv==1.0.1
 pydantic==2.6.1
 pydantic-settings==2.2.1
 alembic==1.13.1
-psycopg2-binary==2.9.9
+# psycopg2-binary==2.9.9  # Not needed for Modal, asyncpg is used
 python-multipart==0.0.9
 httpx==0.26.0
 greenlet==3.2.4
 aiosqlite==0.21.0
+pyjwt[crypto]==2.8.0

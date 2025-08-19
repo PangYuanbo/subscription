@@ -182,8 +182,8 @@
   <div class="container">
     <div class="header">
       <div class="logo">TestFlow</div>
-      <h1>升级到 Premium 计划</h1>
-      <p>解锁全部功能，提升工作效率</p>
+      <h1>Upgrade to Premium Plan</h1>
+      <p>Unlock all features and boost productivity</p>
     </div>
     
     <div class="billing-toggle">
@@ -242,7 +242,7 @@
   </div>
   
   <script>
-    // 切换年费/月费
+    // Toggle between yearly/monthly billing
     const toggle = document.getElementById('billing-toggle');
     const basicPrice = document.getElementById('basic-price');
     const basicPeriod = document.getElementById('basic-period');
@@ -256,13 +256,13 @@
     
     toggle.addEventListener('change', function() {
       if (this.checked) {
-        // 年费
+        // Yearly pricing
         basicPrice.textContent = `$${prices.yearly.basic}`;
         basicPeriod.textContent = '/year';
         proPrice.textContent = `$${prices.yearly.pro}`;
         proPeriod.textContent = '/year';
       } else {
-        // 月费
+        // Monthly pricing
         basicPrice.textContent = `$${prices.monthly.basic}`;
         basicPeriod.textContent = '/month';
         proPrice.textContent = `$${prices.monthly.pro}`;
@@ -275,10 +275,10 @@
       const period = isYearly ? 'yearly' : 'monthly';
       const price = prices[period][plan];
       
-      // 模拟支付流程
+      // Simulate payment process
       console.log(`User clicked subscribe for ${plan} plan: $${price}/${period}`);
       
-      // 显示支付选项
+      // Show payment options
       showPaymentOptions(plan, price, period);
     }
     
@@ -303,9 +303,9 @@
             max-width: 400px;
             width: 90%;
           ">
-            <h2 style="margin: 0 0 16px 0;">选择支付方式</h2>
+            <h2 style="margin: 0 0 16px 0;">Choose Payment Method</h2>
             <p style="margin: 0 0 24px 0; color: #666;">
-              ${plan} 计划 - $${price}/${period === 'yearly' ? 'year' : 'month'}
+              ${plan} Plan - $${price}/${period === 'yearly' ? 'year' : 'month'}
             </p>
             
             <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -317,7 +317,7 @@
                 cursor: pointer;
                 text-align: left;
               ">
-                💳 信用卡支付 (Stripe)
+                💳 Credit Card Payment (Stripe)
               </button>
               
               <button onclick="processPayment('paypal')" style="
@@ -339,7 +339,7 @@
                 cursor: pointer;
                 text-align: left;
               ">
-                🔵 支付宝
+                🔵 Alipay
               </button>
               
               <button onclick="processPayment('wechat')" style="
@@ -350,7 +350,7 @@
                 cursor: pointer;
                 text-align: left;
               ">
-                💚 微信支付
+                💚 WeChat Pay
               </button>
             </div>
             
@@ -363,7 +363,7 @@
               cursor: pointer;
               width: 100%;
             ">
-              取消
+              Cancel
             </button>
           </div>
         </div>
@@ -375,7 +375,7 @@
     function processPayment(method) {
       console.log(`Processing payment with ${method}`);
       
-      // 模拟支付页面跳转
+      // Simulate payment page redirect
       const paymentUrls = {
         stripe: 'https://checkout.stripe.com/pay/test_payment',
         paypal: 'https://www.paypal.com/checkout?token=test_token',
@@ -383,17 +383,17 @@
         wechat: 'https://pay.weixin.qq.com/index.php/public/wechatpay'
       };
       
-      // 显示支付确认
-      alert(`正在跳转到 ${method} 支付页面...\n\n插件应该检测到这个支付行为并自动弹出订阅记录表单！`);
+      // Show payment confirmation
+      alert(`Redirecting to ${method} payment page...\n\nThe extension should detect this payment activity and automatically show the subscription recording form!`);
       
-      // 模拟支付页面
+      // Simulate payment page
       showMockPaymentPage(method);
       
       closePaymentModal();
     }
     
     function showMockPaymentPage(method) {
-      // 创建模拟支付页面
+      // Create simulated payment page
       const paymentPageHtml = `
         <div id="mock-payment-page" style="
           position: fixed;
@@ -411,8 +411,8 @@
             padding: 40px 20px;
           ">
             <div style="text-align: center; margin-bottom: 40px;">
-              <h1>🔒 安全支付</h1>
-              <p style="color: #666;">正在使用 ${method.toUpperCase()} 处理您的付款</p>
+              <h1>🔒 Secure Payment</h1>
+              <p style="color: #666;">Processing your payment using ${method.toUpperCase()}</p>
             </div>
             
             <div style="
@@ -421,18 +421,18 @@
               padding: 24px;
               margin-bottom: 24px;
             ">
-              <h3>订单信息</h3>
+              <h3>Order Information</h3>
               <div style="display: flex; justify-content: space-between; margin: 12px 0;">
                 <span>TestFlow Pro Plan</span>
                 <strong>$19.99/month</strong>
               </div>
               <div style="display: flex; justify-content: space-between; margin: 12px 0;">
-                <span>税费</span>
+                <span>Tax</span>
                 <span>$2.00</span>
               </div>
               <hr style="margin: 16px 0;">
               <div style="display: flex; justify-content: space-between; font-size: 18px;">
-                <strong>总计</strong>
+                <strong>Total</strong>
                 <strong>$21.99</strong>
               </div>
             </div>
@@ -444,10 +444,10 @@
               padding: 24px;
               margin-bottom: 24px;
             ">
-              <h3>支付信息</h3>
+              <h3>Payment Information</h3>
               
               <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 8px;">邮箱地址</label>
+                <label style="display: block; margin-bottom: 8px;">Email Address</label>
                 <input type="email" placeholder="your@email.com" style="
                   width: 100%;
                   padding: 12px;
@@ -457,7 +457,7 @@
               </div>
               
               <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 8px;">卡号</label>
+                <label style="display: block; margin-bottom: 8px;">Card Number</label>
                 <input type="text" placeholder="1234 5678 9012 3456" style="
                   width: 100%;
                   padding: 12px;
@@ -468,7 +468,7 @@
               
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div>
-                  <label style="display: block; margin-bottom: 8px;">有效期</label>
+                  <label style="display: block; margin-bottom: 8px;">Expiry Date</label>
                   <input type="text" placeholder="MM/YY" style="
                     width: 100%;
                     padding: 12px;
@@ -499,7 +499,7 @@
                 margin-top: 24px;
                 cursor: pointer;
               ">
-                完成购买 $21.99
+                Complete Purchase $21.99
               </button>
             </form>
             
@@ -512,7 +512,7 @@
                 border-radius: 6px;
                 cursor: pointer;
               ">
-                返回
+                Back
               </button>
             </div>
           </div>
@@ -523,7 +523,7 @@
     }
     
     function completePurchase() {
-      alert('支付完成！\n\n插件应该在检测到支付成功后自动提示您记录这个订阅。');
+      alert('Payment completed!\n\nThe extension should automatically prompt you to record this subscription after detecting successful payment.');
       closeMockPaymentPage();
     }
     

@@ -1,14 +1,17 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
 from datetime import datetime, timedelta
 import os
+import jwt
+import httpx
 from dotenv import load_dotenv
 
 from database import get_db, init_db
-from models import Subscription, Service
+from models import Subscription, Service, User
 from openrouter_client import openrouter_client
 from schemas import (
     SubscriptionCreate, 
@@ -22,6 +25,10 @@ from schemas import (
 
 load_dotenv()
 
+# Auth0 Configuration
+AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
+AUTH0_AUDIENCE = os.getenv("AUTH0_AUDIENCE")
+
 app = FastAPI(title="Subscription Manager API")
 
 app.add_middleware(
@@ -32,6 +39,97 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Auth0 JWT validation
+
+async def get_auth0_public_key():
+    """Get Auth0 public key for JWT verification"""
+    url = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        return response.json()
+
+async def verify_jwt(credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))):
+    """Verify JWT token and return user info"""
+    if not AUTH0_DOMAIN or not AUTH0_AUDIENCE:
+        # If Auth0 is not configured, return mock user
+        return {"sub": "mock-user", "email": "test@example.com", "name": "Test User"}
+    
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
+    try:
+        # Get the token from the Authorization header
+        token = credentials.credentials
+        
+        # Get Auth0 public key
+        jwks = await get_auth0_public_key()
+        
+        # Decode the token header to get the key ID
+        unverified_header = jwt.get_unverified_header(token)
+        key_id = unverified_header["kid"]
+        
+        # Find the public key
+        public_key = None
+        for key in jwks["keys"]:
+            if key["kid"] == key_id:
+                public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+                break
+        
+        if not public_key:
+            raise HTTPException(status_code=401, detail="Public key not found")
+        
+        # Verify and decode the token
+        payload = jwt.decode(
+            token,
+            public_key,
+            algorithms=["RS256"],
+            audience=AUTH0_AUDIENCE,
+            issuer=f"https://{AUTH0_DOMAIN}/"
+        )
+        
+        return payload
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Token validation failed: {str(e)}")
+
+async def get_or_create_user(user_info: dict, db: AsyncSession):
+    """Get or create user from Auth0 info"""
+    auth0_user_id = user_info.get("sub")
+    email = user_info.get("email")
+    
+    if not auth0_user_id or not email:
+        raise HTTPException(status_code=400, detail="Invalid user information")
+    
+    # Try to find existing user
+    result = await db.execute(
+        select(User).where(User.auth0_user_id == auth0_user_id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        # Create new user
+        user = User(
+            auth0_user_id=auth0_user_id,
+            email=email,
+            name=user_info.get("name"),
+            picture=user_info.get("picture"),
+            nickname=user_info.get("nickname"),
+            last_login=datetime.utcnow()
+        )
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
+    else:
+        # Update last login
+        user.last_login = datetime.utcnow()
+        await db.flush()
+    
+    return user
+
 @app.on_event("startup")
 async def startup_event():
     await init_db()
@@ -40,10 +138,38 @@ async def startup_event():
 async def root():
     return {"message": "Subscription Manager API", "status": "running"}
 
+@app.get("/user/profile")
+async def get_user_profile(
+    db: AsyncSession = Depends(get_db),
+    user_info: dict = Depends(verify_jwt)
+):
+    """Get current user profile"""
+    current_user = await get_or_create_user(user_info, db)
+    
+    return {
+        "id": str(current_user.id),
+        "auth0_user_id": current_user.auth0_user_id,
+        "email": current_user.email,
+        "name": current_user.name,
+        "picture": current_user.picture,
+        "nickname": current_user.nickname,
+        "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+        "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
+    }
+
 @app.get("/subscriptions", response_model=List[SubscriptionResponse])
-async def get_subscriptions(db: AsyncSession = Depends(get_db)):
+async def get_subscriptions(
+    db: AsyncSession = Depends(get_db),
+    user_info: dict = Depends(verify_jwt)
+):
+    # Get or create user
+    current_user = await get_or_create_user(user_info, db)
+    
+    # Get user's subscriptions only
     result = await db.execute(
-        select(Subscription).order_by(Subscription.created_at.desc())
+        select(Subscription).where(Subscription.user_id == current_user.id)
+        .order_by(Subscription.created_at.desc())
     )
     subscriptions = result.scalars().all()
     
@@ -56,6 +182,7 @@ async def get_subscriptions(db: AsyncSession = Depends(get_db)):
         
         response = SubscriptionResponse(
             id=str(sub.id),
+            user_id=str(sub.user_id),
             service_id=str(sub.service_id),
             account=sub.account,
             payment_date=sub.payment_date.isoformat(),
@@ -82,8 +209,12 @@ async def get_subscriptions(db: AsyncSession = Depends(get_db)):
 @app.post("/subscriptions", response_model=SubscriptionResponse)
 async def create_subscription(
     subscription: SubscriptionCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user_info: dict = Depends(verify_jwt)
 ):
+    # Get or create user
+    current_user = await get_or_create_user(user_info, db)
+    
     service_result = await db.execute(
         select(Service).where(Service.id == subscription.service_id)
     )
@@ -99,6 +230,7 @@ async def create_subscription(
         db.add(service)
     
     db_subscription = Subscription(
+        user_id=current_user.id,  # Associate with current user
         service_id=subscription.service_id,
         account=subscription.account,
         payment_date=datetime.fromisoformat(subscription.payment_date),
@@ -117,6 +249,7 @@ async def create_subscription(
     
     return SubscriptionResponse(
         id=str(db_subscription.id),
+        user_id=str(db_subscription.user_id),
         service_id=str(db_subscription.service_id),
         account=db_subscription.account,
         payment_date=db_subscription.payment_date.isoformat(),
@@ -141,10 +274,17 @@ async def create_subscription(
 async def update_subscription(
     subscription_id: str,
     subscription: SubscriptionUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user_info: dict = Depends(verify_jwt)
 ):
+    # Get or create user
+    current_user = await get_or_create_user(user_info, db)
+    
     result = await db.execute(
-        select(Subscription).where(Subscription.id == int(subscription_id))
+        select(Subscription).where(
+            Subscription.id == int(subscription_id),
+            Subscription.user_id == current_user.id  # Only user's own subscriptions
+        )
     )
     db_subscription = result.scalar_one_or_none()
     
@@ -182,6 +322,7 @@ async def update_subscription(
     
     return SubscriptionResponse(
         id=str(db_subscription.id),
+        user_id=str(db_subscription.user_id),
         service_id=str(db_subscription.service_id),
         account=db_subscription.account,
         payment_date=db_subscription.payment_date.isoformat(),
@@ -205,10 +346,17 @@ async def update_subscription(
 @app.delete("/subscriptions/{subscription_id}")
 async def delete_subscription(
     subscription_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user_info: dict = Depends(verify_jwt)
 ):
+    # Get or create user
+    current_user = await get_or_create_user(user_info, db)
+    
     result = await db.execute(
-        select(Subscription).where(Subscription.id == int(subscription_id))
+        select(Subscription).where(
+            Subscription.id == int(subscription_id),
+            Subscription.user_id == current_user.id  # Only user's own subscriptions
+        )
     )
     db_subscription = result.scalar_one_or_none()
     
@@ -221,8 +369,17 @@ async def delete_subscription(
     return {"message": "Subscription deleted successfully"}
 
 @app.get("/analytics", response_model=AnalyticsResponse)
-async def get_analytics(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Subscription))
+async def get_analytics(
+    db: AsyncSession = Depends(get_db),
+    user_info: dict = Depends(verify_jwt)
+):
+    # Get or create user
+    current_user = await get_or_create_user(user_info, db)
+    
+    # Get user's subscriptions only
+    result = await db.execute(
+        select(Subscription).where(Subscription.user_id == current_user.id)
+    )
     subscriptions = result.scalars().all()
     
     total_monthly_cost = sum(sub.monthly_cost for sub in subscriptions)
@@ -266,22 +423,26 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
 @app.post("/subscriptions/nlp", response_model=NLPSubscriptionResponse)
 async def create_subscription_from_nlp(
     request: NLPSubscriptionRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user_info: dict = Depends(verify_jwt)
 ):
     try:
+        # Get or create user
+        current_user = await get_or_create_user(user_info, db)
+        
         parsed_data = await openrouter_client.parse_subscription_text(request.text)
         
         if not parsed_data or not parsed_data.get("service_name"):
             return NLPSubscriptionResponse(
                 success=False,
-                message="无法解析订阅信息，请提供更详细的信息",
+                message="Unable to parse subscription information, please provide more details",
                 parsed_data=parsed_data
             )
         
         if not parsed_data.get("monthly_cost"):
             return NLPSubscriptionResponse(
                 success=False,
-                message="无法确定月费用，请明确指定费用金额",
+                message="Unable to determine monthly cost, please specify the amount",
                 parsed_data=parsed_data
             )
         
@@ -299,6 +460,7 @@ async def create_subscription_from_nlp(
             )
             db.add(service)
             await db.flush()
+            await db.refresh(service)
         
         # Calculate trial dates if trial is present
         trial_start_date = None
@@ -309,6 +471,7 @@ async def create_subscription_from_nlp(
         
         # Create subscription
         db_subscription = Subscription(
+            user_id=current_user.id,  # Associate with current user
             service_id=service.id,
             account=parsed_data["account"],
             payment_date=datetime.fromisoformat(parsed_data["payment_date"]),
@@ -327,6 +490,7 @@ async def create_subscription_from_nlp(
         
         subscription_response = SubscriptionResponse(
             id=str(db_subscription.id),
+            user_id=str(db_subscription.user_id),
             service_id=str(db_subscription.service_id),
             account=db_subscription.account,
             payment_date=db_subscription.payment_date.isoformat(),
@@ -349,7 +513,7 @@ async def create_subscription_from_nlp(
         
         return NLPSubscriptionResponse(
             success=True,
-            message="订阅信息已成功添加",
+            message="Subscription information added successfully",
             subscription=subscription_response,
             parsed_data=parsed_data
         )
@@ -358,7 +522,7 @@ async def create_subscription_from_nlp(
         print(f"Error creating subscription from NLP: {e}")
         return NLPSubscriptionResponse(
             success=False,
-            message=f"处理请求时发生错误: {str(e)}",
+            message=f"Error processing request: {str(e)}",
             parsed_data=None
         )
 

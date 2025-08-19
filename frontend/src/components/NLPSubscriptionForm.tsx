@@ -48,7 +48,7 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
     } catch (error) {
       setResponse({
         success: false,
-        message: '网络连接失败，请检查后端服务是否运行',
+        message: 'Network connection failed, please check if backend service is running',
       });
     } finally {
       setIsLoading(false);
@@ -69,7 +69,7 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-2">
             <MessageSquare className="h-5 w-5 text-blue-500" />
-            <h2 className="text-xl font-semibold text-gray-900">智能添加订阅</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Smart Add Subscription</h2>
           </div>
           <button
             onClick={handleClose}
@@ -82,17 +82,17 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              描述您的订阅
+              Describe Your Subscription
             </label>
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="例如：我想添加Netflix的订阅，每月19.99美元，下次付款是15号，账户是family@example.com"
+              placeholder="For example: I want to add Netflix subscription, $19.99 per month, next payment is on the 15th, account is family@example.com"
               className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               disabled={isLoading}
             />
             <p className="text-xs text-gray-500 mt-1">
-              请尽可能详细地描述服务名称、费用、付款日期和账户信息
+              Please describe service name, cost, payment date and account information in as much detail as possible
             </p>
           </div>
 
@@ -116,22 +116,22 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
                   </p>
                   {response.parsed_data && (
                     <div className="mt-2 text-xs text-gray-600">
-                      <p><strong>解析结果:</strong></p>
+                      <p><strong>Parsing Results:</strong></p>
                       <ul className="list-disc list-inside space-y-1 mt-1">
                         {response.parsed_data.service_name && (
-                          <li>服务名称: {response.parsed_data.service_name}</li>
+                          <li>Service Name: {response.parsed_data.service_name}</li>
                         )}
                         {response.parsed_data.service_category && (
-                          <li>分类: {response.parsed_data.service_category}</li>
+                          <li>Category: {response.parsed_data.service_category}</li>
                         )}
                         {response.parsed_data.monthly_cost && (
-                          <li>月费用: ${response.parsed_data.monthly_cost}</li>
+                          <li>Monthly Cost: ${response.parsed_data.monthly_cost}</li>
                         )}
                         {response.parsed_data.account && (
-                          <li>账户: {response.parsed_data.account}</li>
+                          <li>Account: {response.parsed_data.account}</li>
                         )}
                         {response.parsed_data.payment_date && (
-                          <li>付款日期: {response.parsed_data.payment_date}</li>
+                          <li>Payment Date: {response.parsed_data.payment_date}</li>
                         )}
                       </ul>
                     </div>
@@ -148,7 +148,7 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"
               disabled={isLoading}
             >
-              取消
+              Cancel
             </button>
             <button
               type="submit"
@@ -156,18 +156,18 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
             >
               {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              <span>{isLoading ? '解析中...' : '添加订阅'}</span>
+              <span>{isLoading ? 'Parsing...' : 'Add Subscription'}</span>
             </button>
           </div>
         </form>
 
         <div className="px-6 pb-6">
           <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-2">示例输入:</h3>
+            <h3 className="text-sm font-medium text-gray-900 mb-2">Example Input:</h3>
             <ul className="text-xs text-gray-600 space-y-1">
-              <li>• "我订阅了Spotify Premium，每月9.99美元，每月10号扣费"</li>
-              <li>• "添加GitHub Pro订阅，账户dev@company.com，月费7美元，1号付款"</li>
-              <li>• "Netflix标准版订阅，家庭账户，每月15.99美元，15号付款"</li>
+              <li>• "I subscribed to Spotify Premium, $9.99 per month, charged on the 10th"</li>
+              <li>• "Add GitHub Pro subscription, account dev@company.com, $7 monthly, payment on 1st"</li>
+              <li>• "Netflix Standard subscription, family account, $15.99 per month, payment on 15th"</li>
             </ul>
           </div>
         </div>

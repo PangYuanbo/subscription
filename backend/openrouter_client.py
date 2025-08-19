@@ -35,7 +35,7 @@ Parse the following natural language text into structured subscription service d
 - trial_duration_days: Trial period duration in days
 
 Notes:
-1. If keywords like "free", "trial", "免费", "试用" are mentioned, set is_trial to true
+1. If keywords like "free", "trial" are mentioned, set is_trial to true
 2. If "first few months free" is mentioned, calculate trial_duration_days accordingly
 3. Monthly cost should be the regular cost after trial period
 4. If information is incomplete or cannot be parsed, use null for the respective fields
@@ -126,14 +126,14 @@ Return only JSON, no other explanation.
             # Check for trial period
             is_trial = False
             trial_days = 0
-            if any(word in text_lower for word in ["免费", "试用", "trial", "free"]):
+            if any(word in text_lower for word in ["trial", "free"]):
                 is_trial = True
                 # Look for duration
-                if "三个月" in text or "3个月" in text or "3 个月" in text:
+                if "3 months" in text_lower or "three months" in text_lower:
                     trial_days = 90
-                elif "一个月" in text or "1个月" in text or "1 个月" in text:
+                elif "1 month" in text_lower or "one month" in text_lower:
                     trial_days = 30
-                elif "两个月" in text or "2个月" in text or "2 个月" in text:
+                elif "2 months" in text_lower or "two months" in text_lower:
                     trial_days = 60
             
             return {

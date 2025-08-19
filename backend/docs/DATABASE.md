@@ -2,7 +2,7 @@
 
 This document provides comprehensive information about the database architecture, models, relationships, and operations for the Subscription Manager backend.
 
-## 🗄️ Database Architecture
+## Database Architecture
 
 ### Technology Stack
 
@@ -46,7 +46,7 @@ AsyncSessionLocal = async_sessionmaker(
 Base = declarative_base()
 ```
 
-## 📊 Database Models
+## Database Models
 
 ### Service Model
 
@@ -167,9 +167,9 @@ class BillingCycle(enum.Enum):
 - Monthly subscriptions: `monthly_cost = cost`
 - Yearly subscriptions: `monthly_cost = cost / 12`
 
-## 🔗 Relationships
+## Relationships
 
-### One-to-Many: Service → Subscriptions
+### One-to-Many: Service -> Subscriptions
 
 ```python
 # Service model
@@ -192,10 +192,10 @@ service_name = subscription.service.name
 
 ### Foreign Key Constraints
 
-- `subscriptions.service_id` → `services.id`
+- `subscriptions.service_id` -> `services.id`
 - Cascade behavior: `RESTRICT` (prevent deletion of service with active subscriptions)
 
-## 📝 Database Operations
+## Database Operations
 
 ### Session Management
 
@@ -400,7 +400,7 @@ async def get_upcoming_payments(db: AsyncSession, days: int = 30):
     return result.scalars().all()
 ```
 
-## 🔧 Database Initialization
+## Database Initialization
 
 ### Automatic Table Creation
 
@@ -459,7 +459,7 @@ CREATE INDEX ix_subscriptions_payment_date ON subscriptions (payment_date);
 CREATE INDEX ix_subscriptions_is_trial ON subscriptions (is_trial);
 ```
 
-## 🛡️ Data Integrity & Constraints
+## Data Integrity & Constraints
 
 ### Database Constraints
 
@@ -512,7 +512,7 @@ class SubscriptionCreate(BaseModel):
         return v
 ```
 
-## 📈 Performance Optimization
+## Performance Optimization
 
 ### Indexing Strategy
 
@@ -576,7 +576,7 @@ engine = create_async_engine(
 )
 ```
 
-## 🔄 Database Migrations
+## Database Migrations
 
 ### Using Alembic
 
@@ -619,7 +619,7 @@ def downgrade():
     op.drop_column('subscriptions', 'is_trial')
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Database Testing Setup
 
@@ -664,7 +664,7 @@ async def test_create_subscription(test_db):
     assert len(result.scalars().all()) == 1
 ```
 
-## 🔍 Monitoring & Maintenance
+## Monitoring & Maintenance
 
 ### Database Monitoring
 
@@ -716,7 +716,7 @@ gzip "backup_$DATE.sql"
 aws s3 cp "backup_$DATE.sql.gz" s3://backup-bucket/
 ```
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 

@@ -2,7 +2,7 @@
 
 This document provides comprehensive information about the Natural Language Processing (NLP) capabilities of the Subscription Manager backend, including OpenRouter integration, parsing logic, and customization options.
 
-## 🧠 NLP Overview
+## NLP Overview
 
 The Subscription Manager uses advanced Natural Language Processing to convert human-readable text into structured subscription data. This feature allows users to add subscriptions using natural language instead of filling out forms.
 
@@ -15,7 +15,7 @@ The Subscription Manager uses advanced Natural Language Processing to convert hu
 - **Service Recognition**: Built-in recognition for popular services
 - **Error Recovery**: Graceful degradation when parsing fails
 
-## 🔗 OpenRouter Integration
+## OpenRouter Integration
 
 ### Configuration
 
@@ -65,7 +65,7 @@ Parse the following natural language text into structured subscription service d
 - trial_duration_days: Trial period duration in days
 
 Notes:
-1. If keywords like "free", "trial", "免费", "试用" are mentioned, set is_trial to true
+1. If keywords like "free", "trial" are mentioned, set is_trial to true
 2. If "first few months free" is mentioned, calculate trial_duration_days accordingly
 3. Monthly cost should be the regular cost after trial period
 4. If information is incomplete or cannot be parsed, use null for the respective fields
@@ -76,7 +76,7 @@ Return only JSON, no other explanation.
 """
 ```
 
-## 🎯 Parsing Logic
+## Parsing Logic
 
 ### Dual Parsing Strategy
 
@@ -117,14 +117,14 @@ def _try_pattern_based_parsing(self, text: str) -> Optional[Dict]:
         # Check for trial period
         is_trial = False
         trial_days = 0
-        if any(word in text_lower for word in ["免费", "试用", "trial", "free"]):
+        if any(word in text_lower for word in ["trial", "free"]):
             is_trial = True
             # Look for duration
-            if "三个月" in text or "3个月" in text or "3 个月" in text:
+            if "3 months" in text or "three months" in text:
                 trial_days = 90
-            elif "一个月" in text or "1个月" in text or "1 个月" in text:
+            elif "1 month" in text or "one month" in text:
                 trial_days = 30
-            elif "两个月" in text or "2个月" in text or "2 个月" in text:
+            elif "2 months" in text or "two months" in text:
                 trial_days = 60
         
         return {
@@ -180,7 +180,7 @@ def _validate_and_normalize(self, data: Dict) -> Dict:
     return normalized
 ```
 
-## 📝 Supported Input Formats
+## Supported Input Formats
 
 ### English Examples
 
@@ -217,42 +217,42 @@ def _validate_and_normalize(self, data: Dict) -> Dict:
 
 #### Basic Subscriptions
 ```
-"添加Netflix订阅，每月19.99美元"
-"订阅Spotify Premium，月费9.99美元"
-"GitHub Pro订阅，每月7美元"
-"Microsoft Office，年费99.99美元"
+"Add Netflix subscription, $19.99 per month"
+"Subscribe to Spotify Premium, $9.99 monthly"
+"GitHub Pro subscription, $7 per month"
+"Microsoft Office, $99.99 annually"
 ```
 
 #### With Account Information
 ```
-"Netflix家庭账户订阅，family@example.com，每月15.99美元"
-"添加Spotify家庭版，music@family.com账户，月费14.99美元"
-"GitHub Pro开发者订阅，dev@company.com，每月7美元，1号扣费"
+"Netflix family account subscription, family@example.com, $15.99 monthly"
+"Add Spotify family plan, music@family.com account, $14.99 monthly"
+"GitHub Pro developer subscription, dev@company.com, $7 monthly, billing on 1st"
 ```
 
 #### With Trial Periods
 ```
-"添加amazon prime 服务 一个月6.99 前三个月免费"
-"GitHub Pro订阅，14天免费试用，之后每月7美元"
-"Adobe Photoshop订阅，首月免费，之后每月20.99美元"
-"Netflix Premium，30天试用期，试用后月费19.99美元"
+"Add Amazon Prime service, $6.99 monthly with 3 months free"
+"GitHub Pro subscription, 14-day free trial, then $7 monthly"
+"Adobe Photoshop subscription, first month free, then $20.99 monthly"
+"Netflix Premium, 30-day trial period, $19.99 monthly after trial"
 ```
 
 #### Mixed Language
 ```
-"Subscribe to 网飞 Premium，每月$19.99"
-"添加Spotify订阅 for family account，月费$14.99"
-"GitHub Pro subscription，开发者账户，月费¥50"
+"Subscribe to Netflix Premium, $19.99 monthly"
+"Add Spotify subscription for family account, $14.99 monthly"
+"GitHub Pro subscription, developer account, 50 CNY monthly"
 ```
 
-## 🎯 Service Recognition
+## Service Recognition
 
 ### Built-in Service Patterns
 
 The system has built-in recognition for popular services:
 
 #### Streaming Services
-- **Netflix**: "netflix", "网飞"
+- **Netflix**: "netflix"
 - **Amazon Prime**: "amazon prime", "prime video"
 - **Disney+**: "disney", "disney plus", "disney+"
 - **Hulu**: "hulu"
@@ -293,7 +293,7 @@ CATEGORY_MAPPING = {
 }
 ```
 
-## 🔄 Trial Period Processing
+## Trial Period Processing
 
 ### Trial Detection Keywords
 
@@ -304,10 +304,10 @@ The system recognizes various trial-related keywords:
 - "first month free", "30-day trial", "14-day free"
 - "complimentary", "no charge", "trial offer"
 
-**Chinese**:
-- "免费试用", "试用期", "免费月", "试用版本"
-- "前一个月免费", "30天试用", "14天免费"
-- "免费体验", "体验期", "试用优惠"
+**Additional**:
+- "free trial", "trial period", "free month", "trial version"
+- "first month free", "30-day trial", "14-day free"
+- "free experience", "trial period", "trial offer"
 
 ### Trial Duration Parsing
 
@@ -318,22 +318,22 @@ def parse_trial_duration(text: str) -> int:
     
     # Day patterns
     day_patterns = [
-        (r'(\d+)\s*天', lambda m: int(m.group(1))),
+        (r'(\d+)\s*days?', lambda m: int(m.group(1))),
         (r'(\d+)\s*day', lambda m: int(m.group(1))),
         (r'(\d+)-day', lambda m: int(m.group(1))),
     ]
     
     # Month patterns  
     month_patterns = [
-        (r'(\d+)\s*个?月', lambda m: int(m.group(1)) * 30),
+        (r'(\d+)\s*months?', lambda m: int(m.group(1)) * 30),
         (r'(\d+)\s*month', lambda m: int(m.group(1)) * 30),
         (r'(\d+)-month', lambda m: int(m.group(1)) * 30),
     ]
     
     # Chinese number patterns
     chinese_numbers = {
-        '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
-        '六': 6, '七': 7, '八': 8, '九': 9, '十': 10
+        'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+        'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
     }
     
     for pattern, converter in day_patterns + month_patterns:
@@ -358,7 +358,7 @@ def calculate_trial_dates(trial_duration_days: int) -> tuple:
     return trial_start_date, trial_end_date
 ```
 
-## 🛠️ Integration with Backend
+## Integration with Backend
 
 ### API Endpoint Integration
 
@@ -375,14 +375,14 @@ async def create_subscription_from_nlp(
         if not parsed_data or not parsed_data.get("service_name"):
             return NLPSubscriptionResponse(
                 success=False,
-                message="无法解析订阅信息，请提供更详细的信息",
+                message="Unable to parse subscription information, please provide more details",
                 parsed_data=parsed_data
             )
         
         if not parsed_data.get("monthly_cost"):
             return NLPSubscriptionResponse(
                 success=False,
-                message="无法确定月费用，请明确指定费用金额",
+                message="Unable to determine monthly cost, please specify the amount clearly",
                 parsed_data=parsed_data
             )
         
@@ -429,7 +429,7 @@ async def create_subscription_from_nlp(
         # Return success response
         return NLPSubscriptionResponse(
             success=True,
-            message="订阅信息已成功添加",
+            message="Subscription information successfully added",
             subscription=subscription_response,
             parsed_data=parsed_data
         )
@@ -438,12 +438,12 @@ async def create_subscription_from_nlp(
         print(f"Error creating subscription from NLP: {e}")
         return NLPSubscriptionResponse(
             success=False,
-            message=f"处理请求时发生错误: {str(e)}",
+            message=f"Error occurred while processing request: {str(e)}",
             parsed_data=None
         )
 ```
 
-## 🧪 Testing NLP Functionality
+## Testing NLP Functionality
 
 ### Unit Tests
 
@@ -456,7 +456,7 @@ async def test_pattern_based_parsing():
     client = OpenRouterClient()
     
     # Test Amazon Prime parsing
-    text = "添加amazon prime 服务 一个月6.99 前三个月免费"
+    text = "Add Amazon Prime service, $6.99 monthly with 3 months free"
     result = await client.parse_subscription_text(text)
     
     assert result is not None
@@ -513,7 +513,7 @@ async def test_chinese_input():
     async with httpx.AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.post(
             "/subscriptions/nlp",
-            json={"text": "添加Spotify Premium订阅，每月9.99美元"}
+            json={"text": "Add Spotify Premium subscription, $9.99 monthly"}
         )
     
     assert response.status_code == 200
@@ -532,7 +532,7 @@ curl -X POST "http://localhost:8000/subscriptions/nlp" \
 # Test Chinese input
 curl -X POST "http://localhost:8000/subscriptions/nlp" \
   -H "Content-Type: application/json" \
-  -d '{"text": "添加Spotify Premium订阅，每月9.99美元，10号扣费"}'
+  -d '{"text": "Add Spotify Premium subscription, $9.99 monthly, billing on 10th"}'
 
 # Test trial period
 curl -X POST "http://localhost:8000/subscriptions/nlp" \
@@ -540,7 +540,7 @@ curl -X POST "http://localhost:8000/subscriptions/nlp" \
   -d '{"text": "Amazon Prime with 3 months free trial, then $6.99/month"}'
 ```
 
-## ⚡ Performance Optimization
+## Performance Optimization
 
 ### Caching Strategy
 
@@ -602,7 +602,7 @@ async def parse_with_rate_limit(text: str):
     return await openrouter_client.parse_subscription_text(text)
 ```
 
-## 🔧 Customization and Extension
+## Customization and Extension
 
 ### Adding New Service Patterns
 
@@ -704,18 +704,18 @@ def get_localized_prompt(text: str, language: str) -> str:
     """Get appropriate prompt based on language"""
     if language == "zh":
         return f"""
-将以下中文文本解析为订阅服务的结构化数据。返回JSON格式：
-- service_name: 服务名称
-- service_category: 服务类别
-- account: 账户信息
-- monthly_cost: 月费用
-- payment_date: 下次付款日期 (YYYY-MM-DD格式)
-- is_trial: 是否有试用期
-- trial_duration_days: 试用期天数
+Parse the following text into structured subscription service data. Return JSON format:
+- service_name: Service name
+- service_category: Service category
+- account: Account information
+- monthly_cost: Monthly cost
+- payment_date: Next payment date (YYYY-MM-DD format)
+- is_trial: Whether there is a trial period
+- trial_duration_days: Trial period in days
 
-用户输入: {text}
+User input: {text}
 
-只返回JSON，不要其他解释。
+Return only JSON, no other explanation.
 """
     else:
         return f"""
@@ -734,7 +734,7 @@ Return only JSON, no other explanation.
 """
 ```
 
-## 📊 Monitoring and Analytics
+## Monitoring and Analytics
 
 ### NLP Usage Tracking
 
@@ -817,7 +817,7 @@ async def parse_subscription_text(self, text: str) -> Optional[Dict]:
         return None
 ```
 
-## 🚨 Error Handling and Recovery
+## Error Handling and Recovery
 
 ### Graceful Degradation
 
@@ -862,13 +862,13 @@ async def parse_with_fallback(text: str) -> Dict:
             "trial_duration_days": 0
         },
         "method": "template",
-        "message": "无法自动解析，请手动补充信息"
+        "message": "Unable to auto-parse, please manually complete information"
     }
 
 def extract_basic_info(text: str) -> Dict:
     """Extract basic information using simple regex"""
     # Extract cost
-    cost_match = re.search(r'[\$¥€£]?(\d+\.?\d*)', text)
+    cost_match = re.search(r'[\$\u00a5\u20ac\u00a3]?(\d+\.?\d*)', text)
     monthly_cost = float(cost_match.group(1)) if cost_match else None
     
     # Extract potential service name (first capitalized word)

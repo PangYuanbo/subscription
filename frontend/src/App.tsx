@@ -6,7 +6,10 @@ import NLPSubscriptionForm from '@/components/NLPSubscriptionForm';
 import Analytics from '@/components/Analytics';
 import TrialOverview from '@/components/TrialOverview';
 import type { Subscription, Analytics as AnalyticsData, MonthlySpending } from '@/types';
-import { subscriptionApi } from '@/api/client';
+// import { subscriptionApi } from '@/api/client';
+import { useAuthenticatedApi } from '@/api/auth-client';
+import { useUserData } from '@/hooks/useUserData';
+import { useAuth0 } from '@auth0/auth0-react';
 
 const MOCK_SUBSCRIPTIONS: Subscription[] = [
   {
@@ -60,7 +63,7 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
   {
     id: '5',
     service_id: 'custom',
-    service: { id: 'custom', name: '自定义服务', category: 'Other' },
+    service: { id: 'custom', name: 'Custom Service', category: 'Other' },
     account: 'test@example.com',
     payment_date: '2024-01-05',
     cost: 25.00,
@@ -80,18 +83,35 @@ function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isNLPFormOpen, setIsNLPFormOpen] = useState(false);
   const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
-  const [useApi, setUseApi] = useState(false);
+  const [useApi, setUseApi] = useState(true);
+  const { getUserData, setUserData } = useUserData();
+  const { isAuthenticated, isLoading } = useAuth0();
+  const authenticatedApi = useAuthenticatedApi();
 
   useEffect(() => {
-    loadData();
-  }, [useApi]);
+    // Don't load data if Auth0 is still loading
+    if (!isLoading) {
+      loadData();
+    }
+  }, [useApi, isAuthenticated, isLoading]);
 
   const loadData = async () => {
-    if (useApi) {
+    // Check if Auth0 is configured
+    const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
+    const shouldUseApi = useApi && (isAuthenticated || !auth0Domain);
+    
+    console.log('Loading data:', { 
+      useApi, 
+      isAuthenticated, 
+      auth0Domain: !!auth0Domain, 
+      shouldUseApi 
+    });
+    
+    if (shouldUseApi) {
       try {
         const [subs, analyticsData] = await Promise.all([
-          subscriptionApi.getAll(),
-          subscriptionApi.getAnalytics(),
+          authenticatedApi.subscriptions.getAll(),
+          authenticatedApi.analytics.get(),
         ]);
         setSubscriptions(subs);
         setAnalytics(analyticsData);
@@ -105,12 +125,12 @@ function App() {
   };
 
   const loadMockData = () => {
-    const storedSubs = localStorage.getItem('subscriptions');
+    const storedSubs = getUserData('subscriptions');
     if (storedSubs) {
       setSubscriptions(JSON.parse(storedSubs));
     } else {
       setSubscriptions(MOCK_SUBSCRIPTIONS);
-      localStorage.setItem('subscriptions', JSON.stringify(MOCK_SUBSCRIPTIONS));
+      setUserData('subscriptions', MOCK_SUBSCRIPTIONS);
     }
     calculateAnalytics(storedSubs ? JSON.parse(storedSubs) : MOCK_SUBSCRIPTIONS);
   };
@@ -128,7 +148,7 @@ function App() {
       return acc;
     }, [] as { category: string; total: number }[]);
 
-    const storedMonthlyTrend = localStorage.getItem('monthlySpendingTrend');
+    const storedMonthlyTrend = getUserData('monthlySpendingTrend');
     let monthlyTrend: MonthlySpending[];
     
     if (storedMonthlyTrend) {
@@ -144,7 +164,7 @@ function App() {
           actual: undefined
         };
       });
-      localStorage.setItem('monthlySpendingTrend', JSON.stringify(monthlyTrend));
+      setUserData('monthlySpendingTrend', monthlyTrend);
     }
 
     monthlyTrend = monthlyTrend.map(item => ({
@@ -181,9 +201,12 @@ function App() {
 
   const handleDeleteSubscription = async (id: string) => {
     if (confirm('Are you sure you want to delete this subscription?')) {
-      if (useApi) {
+      const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
+      const shouldUseApi = useApi && (isAuthenticated || !auth0Domain);
+      
+      if (shouldUseApi) {
         try {
-          await subscriptionApi.delete(id);
+          await authenticatedApi.subscriptions.delete(id);
           await loadData();
         } catch (error) {
           console.error('Failed to delete subscription', error);
@@ -191,19 +214,22 @@ function App() {
       } else {
         const updatedSubs = subscriptions.filter(sub => sub.id !== id);
         setSubscriptions(updatedSubs);
-        localStorage.setItem('subscriptions', JSON.stringify(updatedSubs));
+        setUserData('subscriptions', updatedSubs);
         calculateAnalytics(updatedSubs);
       }
     }
   };
 
   const handleSubmitSubscription = async (subscriptionData: Omit<Subscription, 'id'>) => {
-    if (useApi) {
+    const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
+    const shouldUseApi = useApi && (isAuthenticated || !auth0Domain);
+    
+    if (shouldUseApi) {
       try {
         if (editingSubscription) {
-          await subscriptionApi.update(editingSubscription.id, subscriptionData);
+          await authenticatedApi.subscriptions.update(editingSubscription.id, subscriptionData);
         } else {
-          await subscriptionApi.create(subscriptionData);
+          await authenticatedApi.subscriptions.create(subscriptionData);
         }
         await loadData();
       } catch (error) {
@@ -225,7 +251,7 @@ function App() {
         updatedSubs = [...subscriptions, newSub];
       }
       setSubscriptions(updatedSubs);
-      localStorage.setItem('subscriptions', JSON.stringify(updatedSubs));
+      setUserData('subscriptions', updatedSubs);
       calculateAnalytics(updatedSubs);
     }
     setIsFormOpen(false);
@@ -233,7 +259,7 @@ function App() {
   };
 
   const handleMonthlySpendingUpdate = (updatedData: MonthlySpending[]) => {
-    localStorage.setItem('monthlySpendingTrend', JSON.stringify(updatedData));
+    setUserData('monthlySpendingTrend', updatedData);
     if (analytics) {
       setAnalytics({
         ...analytics,
@@ -268,7 +294,7 @@ function App() {
                 onEdit={handleEditSubscription}
                 onDelete={handleDeleteSubscription}
                 onAdd={handleAddSubscription}
-                onNLPAdd={useApi ? handleNLPAddSubscription : undefined}
+                onNLPAdd={(useApi && (isAuthenticated || !import.meta.env.VITE_AUTH0_DOMAIN)) ? handleNLPAddSubscription : undefined}
               />
               {analytics && <Analytics data={analytics} onMonthlySpendingUpdate={handleMonthlySpendingUpdate} />}
             </div>
@@ -291,7 +317,7 @@ function App() {
           {activeSection === 'settings' && (
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">应用设置</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Application Settings</h2>
                 <div className="space-y-4">
                   <div>
                     <label className="flex items-center space-x-3">
@@ -302,24 +328,24 @@ function App() {
                         className="rounded border-gray-300"
                       />
                       <span className="text-sm text-gray-700">
-                        使用后端API (需要后端服务器运行)
+                        Use Backend API (requires backend server running)
                       </span>
                     </label>
                   </div>
                   <div className="text-sm text-gray-600">
-                    <p>API地址: {import.meta.env.VITE_API_URL || 'http://localhost:8000'}</p>
-                    <p>数据存储: {useApi ? '远程数据库' : '本地存储'}</p>
+                    <p>API Address: {import.meta.env.VITE_API_URL || 'http://localhost:8000'}</p>
+                    <p>Data Storage: {useApi ? 'Remote Database' : 'Local Storage'}</p>
                   </div>
                 </div>
               </div>
               
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">图标系统</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Icon System</h2>
                 <div className="text-sm text-gray-600 space-y-2">
-                  <p>• 应用包含50+预定义热门服务商图标</p>
-                  <p>• 自定义服务自动生成首字母图标</p>
-                  <p>• 支持中英文服务名称</p>
-                  <p>• 颜色根据服务名称确定，保证一致性</p>
+                  <p>• Application includes 50+ predefined popular service icons</p>
+                  <p>• Custom services automatically generate initial icons</p>
+                  <p>• Supports Chinese and English service names</p>
+                  <p>• Colors determined by service name, ensuring consistency</p>
                 </div>
               </div>
             </div>

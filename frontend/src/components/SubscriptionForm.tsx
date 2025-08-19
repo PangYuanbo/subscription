@@ -55,7 +55,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         trial_duration_days: subscription.trial_duration_days || 30,
       });
       
-      // 设置选中的服务
+      // Set selected service
       if (subscription.service_id === 'custom') {
         setSelectedService(null);
         setCustomServiceName(subscription.service?.name || '');
@@ -82,17 +82,17 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
 
   const handleServiceSelect = (service: ServiceData | null, customName?: string) => {
     if (service) {
-      // 选择了预定义服务
+      // Selected predefined service
       setSelectedService(service);
       setFormData({ ...formData, service_id: service.id });
       setCustomServiceName('');
     } else if (customName) {
-      // 输入了自定义服务名称
+      // Entered custom service name
       setSelectedService(null);
       setFormData({ ...formData, service_id: 'custom' });
       setCustomServiceName(customName);
     } else {
-      // 清空选择
+      // Clear selection
       setSelectedService(null);
       setFormData({ ...formData, service_id: '' });
       setCustomServiceName('');
@@ -102,14 +102,14 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 验证服务选择
+    // Validate service selection
     if (!formData.service_id) {
-      alert('请选择或输入服务商名称');
+      alert('Please select or enter a service name');
       return;
     }
 
     if (formData.service_id === 'custom' && !customServiceName.trim()) {
-      alert('请输入自定义服务商名称');
+      alert('Please enter custom service name');
       return;
     }
     
@@ -124,7 +124,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
       service = selectedService || PREDEFINED_SERVICES.find(s => s.id === formData.service_id);
     }
     
-    // 计算月费用
+    // Calculate monthly cost
     const monthly_cost = formData.billing_cycle === 'yearly' 
       ? formData.cost / 12 
       : formData.cost;
@@ -135,7 +135,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
       monthly_cost,
     };
 
-    // 如果是试用期，计算结束日期
+    // If it's a trial period, calculate end date
     if (formData.is_trial && formData.trial_start_date) {
       submissionData.trial_end_date = calculateTrialEndDate(
         formData.trial_start_date, 
@@ -168,7 +168,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
                 <ServiceAutocomplete
                   value={formData.service_id}
                   onServiceSelect={handleServiceSelect}
-                  placeholder="输入服务商名称，支持自动提示..."
+                  placeholder="Enter service name with auto-suggestions..."
                   required
                 />
               </div>
@@ -215,8 +215,8 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
                   setFormData({ ...formData, billing_cycle: e.target.value as BillingCycle })
                 }
               >
-                <option value="monthly">Monthly (月费)</option>
-                <option value="yearly">Yearly (年费)</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
               </select>
             </div>
 
@@ -244,7 +244,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
               </div>
             </div>
 
-            {/* 试用期设置 */}
+            {/* Trial period settings */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right">
                 Trial Period
@@ -266,7 +266,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
               </div>
             </div>
 
-            {/* 试用期详细设置 */}
+            {/* Detailed trial period settings */}
             {formData.is_trial && (
               <>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -305,7 +305,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
                       ))}
                     </select>
                     
-                    {/* 显示计算出的结束日期 */}
+                    {/* Display calculated end date */}
                     {formData.trial_start_date && (
                       <div className="text-xs text-gray-600">
                         Trial ends: {calculateTrialEndDate(formData.trial_start_date, formData.trial_duration_days)}

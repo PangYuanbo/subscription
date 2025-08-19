@@ -5,13 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const IconGallery: React.FC = () => {
   const customExamples = [
-    '自定义服务',
+    'Custom Service',
     'TestApp',
     'My Service',
-    '测试应用',
+    'Test App',
     'Custom Tool',
     'API Service',
-    '开发工具',
+    'Dev Tools',
     'Database',
   ];
 
@@ -19,7 +19,7 @@ const IconGallery: React.FC = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>预定义服务商图标</CardTitle>
+          <CardTitle>Predefined Service Icons</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -37,14 +37,14 @@ const IconGallery: React.FC = () => {
             ))}
           </div>
           <div className="mt-4 text-sm text-gray-600">
-            <p>总共预置了 {PREDEFINED_SERVICES.length} 个热门服务商</p>
+            <p>Total of {PREDEFINED_SERVICES.length} popular service providers pre-configured</p>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>自动生成首字母图标</CardTitle>
+          <CardTitle>Auto-Generated Initial Icons</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
@@ -61,15 +61,15 @@ const IconGallery: React.FC = () => {
             ))}
           </div>
           <div className="mt-4 text-sm text-gray-600">
-            <p>如果服务商没有预设图标，系统会自动生成彩色的首字母图标</p>
-            <p>颜色根据服务名称确定，确保相同名称总是显示相同颜色</p>
+            <p>If a service provider doesn't have a preset icon, the system will automatically generate colorful initial icons</p>
+            <p>Colors are determined by service name, ensuring the same name always displays the same color</p>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>不同尺寸示例</CardTitle>
+          <CardTitle>Different Size Examples</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-6">
@@ -86,7 +86,7 @@ const IconGallery: React.FC = () => {
               <p className="text-xs mt-1">48px</p>
             </div>
             <div className="text-center">
-              <ServiceIcon serviceName="自定义应用" size={64} />
+              <ServiceIcon serviceName="Custom App" size={64} />
               <p className="text-xs mt-1">64px</p>
             </div>
           </div>

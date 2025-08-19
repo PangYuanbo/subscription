@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -219,62 +219,62 @@
 <body>
   <div class="header">
     <h1>🎯 Subscription Tracker</h1>
-    <p>智能订阅管理助手</p>
+    <p>Smart Subscription Management Assistant</p>
   </div>
 
   <div class="content">
-    <!-- 加载状态 -->
+    <!-- Loading status -->
     <div id="loading-status" class="status loading">
       <div class="loading-spinner"></div>
-      正在检测当前页面...
+      Detecting current page...
     </div>
 
-    <!-- 未检测到订阅服务 -->
+    <!-- No subscription service detected -->
     <div id="no-detection" class="no-detection" style="display: none;">
       <div class="icon">🔍</div>
-      <h3>未检测到订阅服务</h3>
-      <p>当前页面似乎不是订阅服务页面</p>
+      <h3>No Subscription Service Detected</h3>
+      <p>Current page does not appear to be a subscription service page</p>
       <button class="btn btn-primary" onclick="window.close()" style="margin-top: 16px;">
-        关闭
+        Close
       </button>
     </div>
 
-    <!-- 检测到订阅服务 -->
+    <!-- Subscription service detected -->
     <div id="subscription-form" style="display: none;">
       <div class="status detected">
-        <span class="detected-badge">已检测</span>
-        <strong style="margin-left: 8px;">找到订阅服务信息</strong>
+        <span class="detected-badge">Detected</span>
+        <strong style="margin-left: 8px;">Found subscription service information</strong>
       </div>
 
       <form id="subscription-data-form">
         <div class="service-info">
           <div class="service-name" id="service-name">Loading...</div>
           <div id="price-info" class="price-info" style="display: none;">
-            <!-- 价格信息将在这里显示 -->
+            <!-- Price information will be displayed here -->
           </div>
         </div>
 
         <div class="form-group">
-          <label for="account">账户/邮箱</label>
-          <input type="email" id="account" placeholder="输入您的账户邮箱" required>
+          <label for="account">Account/Email</label>
+          <input type="email" id="account" placeholder="Enter your account email" required>
         </div>
 
         <div class="form-group">
-          <label for="billing-cycle">计费周期</label>
+          <label for="billing-cycle">Billing Cycle</label>
           <select id="billing-cycle" required>
-            <option value="">请选择计费周期</option>
-            <option value="monthly">月费</option>
-            <option value="yearly">年费</option>
+            <option value="">Please select billing cycle</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="cost">费用</label>
-          <input type="number" id="cost" step="0.01" placeholder="输入费用金额" required>
+          <label for="cost">Cost</label>
+          <input type="number" id="cost" step="0.01" placeholder="Enter cost amount" required>
         </div>
 
         <div class="form-group">
-          <label for="payment-date">付款日期</label>
+          <label for="payment-date">Payment Date</label>
           <input type="date" id="payment-date" required>
         </div>
 
@@ -283,10 +283,10 @@
 
         <div class="button-group">
           <button type="button" class="btn btn-secondary" onclick="window.close()">
-            取消
+            Cancel
           </button>
           <button type="submit" class="btn btn-primary" id="submit-btn">
-            添加订阅
+            Add Subscription
           </button>
         </div>
       </form>

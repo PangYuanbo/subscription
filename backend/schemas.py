@@ -7,6 +7,32 @@ class BillingCycle(str, Enum):
     monthly = "monthly"
     yearly = "yearly"
 
+# User schemas
+class UserBase(BaseModel):
+    email: str
+    name: Optional[str] = None
+    picture: Optional[str] = None
+    nickname: Optional[str] = None
+
+class UserCreate(UserBase):
+    auth0_user_id: str
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    picture: Optional[str] = None
+    nickname: Optional[str] = None
+    last_login: Optional[datetime] = None
+
+class UserResponse(UserBase):
+    id: str
+    auth0_user_id: str
+    last_login: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
 class ServiceBase(BaseModel):
     name: str
     icon_url: Optional[str] = None
@@ -29,7 +55,7 @@ class SubscriptionBase(BaseModel):
     billing_cycle: BillingCycle = BillingCycle.monthly
     monthly_cost: float
     
-    # 试用期相关字段
+    # Trial period related fields
     is_trial: Optional[bool] = False
     trial_start_date: Optional[str] = None
     trial_end_date: Optional[str] = None
@@ -45,7 +71,7 @@ class SubscriptionUpdate(BaseModel):
     billing_cycle: Optional[BillingCycle] = None
     monthly_cost: Optional[float] = None
     
-    # 试用期相关字段
+    # Trial period related fields
     is_trial: Optional[bool] = None
     trial_start_date: Optional[str] = None
     trial_end_date: Optional[str] = None
@@ -53,9 +79,11 @@ class SubscriptionUpdate(BaseModel):
 
 class SubscriptionResponse(SubscriptionBase):
     id: str
+    user_id: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     service: Optional[ServiceResponse] = None
+    user: Optional[UserResponse] = None
     
     class Config:
         from_attributes = True

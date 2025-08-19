@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ServiceIcon from '@/components/ServiceIcon';
 import TrialStatus from '@/components/TrialStatus';
+import RenewalProgress from '@/components/RenewalProgress';
 import { 
   Pencil, 
   Trash2, 
@@ -70,7 +71,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
             {onNLPAdd && (
               <Button onClick={onNLPAdd} className="bg-blue-600 hover:bg-blue-700">
                 <MessageSquare className="h-4 w-4 mr-2" />
-                智能添加
+                Smart Add
               </Button>
             )}
             <Button onClick={onAdd} className="bg-green-600 hover:bg-green-700">
@@ -126,6 +127,9 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</span>
               </th>
               <th className="px-6 py-3 text-left">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Renewal Progress</span>
+              </th>
+              <th className="px-6 py-3 text-left">
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Trial Status</span>
               </th>
               <th className="px-6 py-3 text-right">
@@ -170,6 +174,9 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
                       </div>
                     )}
                   </div>
+                </td>
+                <td className="px-6 py-4">
+                  <RenewalProgress subscription={subscription} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <TrialStatus subscription={subscription} />

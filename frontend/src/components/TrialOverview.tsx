@@ -37,7 +37,7 @@ const TrialOverview: React.FC<TrialOverviewProps> = ({ subscriptions }) => {
 
   return (
     <div className="space-y-6">
-      {/* 试用期统计 */}
+      {/* Trial period statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -76,7 +76,7 @@ const TrialOverview: React.FC<TrialOverviewProps> = ({ subscriptions }) => {
         </Card>
       </div>
 
-      {/* 即将到期的试用期列表 */}
+      {/* List of trials expiring soon */}
       {expiringSoonSubscriptions.length > 0 && (
         <Card>
           <CardHeader>

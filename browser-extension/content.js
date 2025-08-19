@@ -1,4 +1,4 @@
-// 内容脚本 - 在网页中运行，检测订阅服务并提取信息
+// Content script - runs in web pages, detects subscription services and extracts information
 
 class SubscriptionDetector {
   constructor() {
@@ -8,14 +8,14 @@ class SubscriptionDetector {
   }
   
   init() {
-    // 等待页面加载完成后开始检测
+    // Wait for page to load before starting detection
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => this.startDetection());
     } else {
       this.startDetection();
     }
     
-    // 立即开始监听支付和订阅行为
+    // Immediately start monitoring payment and subscription behavior
     this.startPaymentMonitoring();
     this.startSubscriptionActionMonitoring();
   }
@@ -23,16 +23,16 @@ class SubscriptionDetector {
   startDetection() {
     console.log('Starting subscription detection on:', window.location.href);
     
-    // 检测订阅相关内容
+    // Detect subscription-related content
     const detectionResult = this.detectSubscriptionContent();
     
     if (detectionResult.isSubscriptionPage) {
       console.log('Subscription page detected:', detectionResult);
       
-      // 提取详细信息
+      // Extract detailed information
       const extractedData = this.extractSubscriptionData();
       
-      // 发送到背景脚本
+      // Send to background script
       chrome.runtime.sendMessage({
         action: 'detectSubscription',
         data: {
@@ -41,11 +41,11 @@ class SubscriptionDetector {
         }
       });
       
-      // 显示插件提示界面
+      // Show extension prompt interface
       this.showSubscriptionPrompt(extractedData);
     }
     
-    // 监听页面变化（SPA应用）
+    // Monitor page changes (SPA applications)
     this.observePageChanges();
   }
   
@@ -54,30 +54,30 @@ class SubscriptionDetector {
     const pageTitle = document.title;
     const url = window.location.href;
     
-    // 检查URL关键词
+    // Check URL keywords
     const urlKeywords = ['subscribe', 'billing', 'checkout', 'pricing', 'plans', 'payment', 'premium', 'pro'];
     const hasUrlKeyword = urlKeywords.some(keyword => url.toLowerCase().includes(keyword));
     
-    // 检查页面内容关键词
+    // Check page content keywords
     const contentKeywords = [
       'subscribe', 'subscription', 'billing', 'payment', 'monthly', 'yearly', 
       'annual', 'premium', 'pro', 'upgrade', 'checkout', 'purchase', 'buy now',
-      '订阅', '付费', '升级', '购买', '月费', '年费', '会员'
+      'subscription', 'payment', 'upgrade', 'purchase', 'monthly fee', 'annual fee', 'membership'
     ];
     const keywordMatches = contentKeywords.filter(keyword => pageText.includes(keyword));
     
-    // 检查价格信息
+    // Check price information
     const pricePatterns = [
       /\$\d+(?:\.\d{2})?[\s]*(?:\/(?:month|year|mo|yr))?/gi,
-      /¥\d+(?:\.\d{2})?[\s]*(?:\/(?:月|年))?/gi,
+      /¥\d+(?:\.\d{2})?[\s]*(?:\/(?:month|year))?/gi,
       /€\d+(?:\.\d{2})?[\s]*(?:\/(?:month|year|mo|yr))?/gi
     ];
     const hasPricing = pricePatterns.some(pattern => pattern.test(pageText));
     
-    // 检查订阅相关表单
+    // Check for subscription-related forms
     const hasSubscriptionForm = this.hasSubscriptionForm();
     
-    // 判断是否为订阅页面
+    // Determine if this is a subscription page
     const isSubscriptionPage = hasUrlKeyword || 
                               (keywordMatches.length >= 2) || 
                               hasPricing || 
@@ -88,7 +88,7 @@ class SubscriptionDetector {
       confidence: this.calculateConfidence(hasUrlKeyword, keywordMatches.length, hasPricing, hasSubscriptionForm),
       pageTitle,
       url,
-      content: pageText.substring(0, 5000), // 限制内容长度
+      content: pageText.substring(0, 5000), // Limit content length
       keywordMatches
     };
   }
@@ -105,7 +105,7 @@ class SubscriptionDetector {
   }
   
   hasSubscriptionForm() {
-    // 检查是否有订阅相关的表单或按钮
+    // Check for subscription-related forms or buttons
     const subscriptionSelectors = [
       'form[action*="subscribe"]',
       'form[action*="billing"]',
@@ -141,11 +141,11 @@ class SubscriptionDetector {
   }
   
   extractServiceName() {
-    // 尝试从页面标题提取服务名
+    // Try to extract service name from page title
     const title = document.title;
     const titleParts = title.split(/[-|–—]/);
     
-    // 尝试从logo或品牌元素提取
+    // Try to extract from logo or brand elements
     const logoSelectors = [
       '.logo img[alt]',
       '.brand img[alt]',
@@ -165,7 +165,7 @@ class SubscriptionDetector {
       }
     }
     
-    // 从URL提取域名作为fallback
+    // Extract domain from URL as fallback
     const hostname = window.location.hostname;
     const domain = hostname.replace(/^www\./, '').split('.')[0];
     return domain.charAt(0).toUpperCase() + domain.slice(1);
@@ -229,7 +229,7 @@ class SubscriptionDetector {
       });
     });
     
-    return [...new Set(planNames)]; // 去重
+    return [...new Set(planNames)]; // Remove duplicates
   }
   
   extractFeatures() {
@@ -251,7 +251,7 @@ class SubscriptionDetector {
       });
     });
     
-    return features.slice(0, 10); // 限制特性数量
+    return features.slice(0, 10); // Limit number of features
   }
   
   extractBillingOptions() {
@@ -269,12 +269,12 @@ class SubscriptionDetector {
   }
   
   showSubscriptionPrompt(data) {
-    // 检查是否已经显示过提示
+    // Check if prompt has already been shown
     if (document.querySelector('#subscription-tracker-prompt')) {
       return;
     }
     
-    // 创建提示界面
+    // Create prompt interface
     const promptHtml = `
       <div id="subscription-tracker-prompt" style="
         position: fixed;
@@ -290,17 +290,17 @@ class SubscriptionDetector {
       ">
         <div style="padding: 16px; border-bottom: 1px solid #e1e5e9;">
           <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">
-            🎯 检测到订阅服务
+            🎯 Subscription Service Detected
           </h3>
           <p style="margin: 0; font-size: 14px; color: #666;">
-            发现 "${data.serviceName}" 的订阅信息
+            Found subscription information for "${data.serviceName}"
           </p>
         </div>
         
         <div style="padding: 16px;">
           ${data.prices.length > 0 ? `
             <div style="margin-bottom: 12px;">
-              <strong style="font-size: 14px; color: #333;">检测到价格:</strong>
+              <strong style="font-size: 14px; color: #333;">Detected prices:</strong>
               <div style="font-size: 13px; color: #666; margin-top: 4px;">
                 ${data.prices.slice(0, 2).map(p => `${p.text}/${p.period}`).join(', ')}
               </div>
@@ -318,7 +318,7 @@ class SubscriptionDetector {
               font-size: 14px;
               font-weight: 500;
               cursor: pointer;
-            ">添加订阅</button>
+            ">Add Subscription</button>
             
             <button id="dismiss-prompt-btn" style="
               background: #f3f4f6;
@@ -328,16 +328,16 @@ class SubscriptionDetector {
               border-radius: 6px;
               font-size: 14px;
               cursor: pointer;
-            ">忽略</button>
+            ">Dismiss</button>
           </div>
         </div>
       </div>
     `;
     
-    // 添加到页面
+    // Add to page
     document.body.insertAdjacentHTML('beforeend', promptHtml);
     
-    // 添加事件监听
+    // Add event listeners
     document.getElementById('add-subscription-btn').addEventListener('click', () => {
       this.openSubscriptionForm(data);
     });
@@ -346,7 +346,7 @@ class SubscriptionDetector {
       document.getElementById('subscription-tracker-prompt').remove();
     });
     
-    // 5秒后自动隐藏
+    // Auto-hide after 5 seconds
     setTimeout(() => {
       const prompt = document.getElementById('subscription-tracker-prompt');
       if (prompt) {
@@ -356,46 +356,46 @@ class SubscriptionDetector {
   }
   
   openSubscriptionForm(data) {
-    // 发送消息到背景脚本打开表单
+    // Send message to background script to open form
     chrome.runtime.sendMessage({
       action: 'openPopup',
       data: data
     });
     
-    // 移除提示
+    // Remove prompt
     document.getElementById('subscription-tracker-prompt').remove();
   }
   
   observePageChanges() {
-    // 监听SPA路由变化
+    // Monitor SPA route changes
     let lastUrl = location.href;
     new MutationObserver(() => {
       const url = location.href;
       if (url !== lastUrl) {
         lastUrl = url;
-        setTimeout(() => this.startDetection(), 1000); // 延迟检测
+        setTimeout(() => this.startDetection(), 1000); // Delayed detection
       }
     }).observe(document, { subtree: true, childList: true });
   }
   
-  // 开始支付行为监听
+  // Start payment behavior monitoring
   startPaymentMonitoring() {
     console.log('Starting payment monitoring');
     
-    // 监听支付相关链接点击
+    // Monitor payment-related link clicks
     this.monitorPaymentLinks();
     
-    // 监听支付表单提交
+    // Monitor payment form submissions
     this.monitorPaymentForms();
     
-    // 监听支付按钮点击
+    // Monitor payment button clicks
     this.monitorPaymentButtons();
     
-    // 检测支付页面跳转
+    // Detect payment page redirects
     this.detectPaymentRedirects();
   }
   
-  // 监听支付链接
+  // Monitor payment links
   monitorPaymentLinks() {
     const paymentLinkSelectors = [
       'a[href*="checkout"]',
@@ -421,7 +421,7 @@ class SubscriptionDetector {
     });
   }
   
-  // 监听支付表单
+  // Monitor payment forms
   monitorPaymentForms() {
     const paymentFormSelectors = [
       'form[action*="checkout"]',
@@ -444,7 +444,7 @@ class SubscriptionDetector {
     });
   }
   
-  // 监听支付按钮
+  // Monitor payment buttons
   monitorPaymentButtons() {
     const paymentButtonSelectors = [
       'button[class*="checkout"]',
@@ -471,11 +471,11 @@ class SubscriptionDetector {
     });
   }
   
-  // 检测支付页面跳转
+  // Detect payment page redirects
   detectPaymentRedirects() {
     const currentUrl = window.location.href;
     
-    // 检查当前URL是否为支付页面
+    // Check if current URL is a payment page
     const paymentUrlPatterns = [
       /checkout\.stripe\.com/i,
       /paypal\.com\/checkout/i,
@@ -495,21 +495,21 @@ class SubscriptionDetector {
     }
   }
   
-  // 开始订阅行为监听
+  // Start subscription behavior monitoring
   startSubscriptionActionMonitoring() {
     console.log('Starting subscription action monitoring');
     
-    // 监听订阅按钮点击
+    // Monitor subscription button clicks
     this.monitorSubscriptionButtons();
     
-    // 监听套餐选择
+    // Monitor plan selection
     this.monitorPlanSelection();
     
-    // 监听计费周期切换
+    // Monitor billing cycle changes
     this.monitorBillingCycleChanges();
   }
   
-  // 监听订阅按钮
+  // Monitor subscription buttons
   monitorSubscriptionButtons() {
     const subscriptionButtonSelectors = [
       'button[class*="subscribe"]',
@@ -518,8 +518,8 @@ class SubscriptionDetector {
       'a[class*="upgrade"]',
       'button:contains("Subscribe")',
       'button:contains("Upgrade")',
-      'button:contains("订阅")',
-      'button:contains("升级")',
+      'button:contains("Subscribe")',
+      'button:contains("Upgrade")',
       '[data-plan]',
       '.pricing-button',
       '.plan-button',
@@ -537,7 +537,7 @@ class SubscriptionDetector {
     });
   }
   
-  // 监听套餐选择
+  // Monitor plan selection
   monitorPlanSelection() {
     const planSelectors = [
       '.pricing-card',
@@ -558,7 +558,7 @@ class SubscriptionDetector {
     });
   }
   
-  // 监听计费周期变化
+  // Monitor billing cycle changes
   monitorBillingCycleChanges() {
     const billingToggleSelectors = [
       'input[type="radio"][name*="billing"]',
@@ -579,7 +579,7 @@ class SubscriptionDetector {
     });
   }
   
-  // 处理支付链接点击
+  // Handle payment link clicks
   handlePaymentLinkClick(link) {
     const extractedData = {
       action: 'payment_link_click',
@@ -592,7 +592,7 @@ class SubscriptionDetector {
     this.sendPaymentDetection(extractedData);
   }
   
-  // 处理支付表单提交
+  // Handle payment form submissions
   handlePaymentFormSubmit(form) {
     const extractedData = {
       action: 'payment_form_submit',
@@ -604,7 +604,7 @@ class SubscriptionDetector {
     this.sendPaymentDetection(extractedData);
   }
   
-  // 处理支付按钮点击
+  // Handle payment button clicks
   handlePaymentButtonClick(button) {
     const extractedData = {
       action: 'payment_button_click',
@@ -617,7 +617,7 @@ class SubscriptionDetector {
     this.sendPaymentDetection(extractedData);
   }
   
-  // 处理支付页面检测
+  // Handle payment page detection
   handlePaymentPageDetection() {
     this.paymentDetected = true;
     
@@ -631,7 +631,7 @@ class SubscriptionDetector {
     this.sendPaymentDetection(extractedData);
   }
   
-  // 处理订阅按钮点击
+  // Handle subscription button clicks
   handleSubscriptionButtonClick(button) {
     const extractedData = {
       action: 'subscription_button_click',
@@ -644,7 +644,7 @@ class SubscriptionDetector {
     this.sendSubscriptionAction(extractedData);
   }
   
-  // 处理套餐选择
+  // Handle plan selection
   handlePlanSelection(planElement) {
     const extractedData = {
       action: 'plan_selected',
@@ -657,7 +657,7 @@ class SubscriptionDetector {
     this.sendSubscriptionAction(extractedData);
   }
   
-  // 处理计费周期变化
+  // Handle billing cycle changes
   handleBillingCycleChange(element) {
     const extractedData = {
       action: 'billing_cycle_changed',
@@ -669,22 +669,22 @@ class SubscriptionDetector {
     this.sendSubscriptionAction(extractedData);
   }
   
-  // 判断是否为订阅操作
+  // Determine if this is a subscription action
   isSubscriptionAction(element) {
     const text = element.textContent.toLowerCase();
     const subscriptionKeywords = [
       'subscribe', 'upgrade', 'get started', 'choose plan',
-      'select plan', '订阅', '升级', '选择套餐'
+      'select plan', 'subscribe', 'upgrade', 'choose plan'
     ];
     
     return subscriptionKeywords.some(keyword => text.includes(keyword));
   }
   
-  // 提取订阅上下文信息
+  // Extract subscription context information
   extractSubscriptionContext(element) {
     const context = {};
     
-    // 查找最近的价格信息
+    // Find nearby price information
     const priceElement = element.closest('.pricing-card, .plan-card') || 
                         element.querySelector('.price, [class*="price"]');
     if (priceElement) {
@@ -696,7 +696,7 @@ class SubscriptionDetector {
       }
     }
     
-    // 检测计费周期
+    // Detect billing cycle
     const contextText = element.closest('.pricing-card, .plan-card')?.textContent.toLowerCase() || '';
     if (contextText.includes('month')) {
       context.billingCycle = 'monthly';
@@ -707,7 +707,7 @@ class SubscriptionDetector {
     return context;
   }
   
-  // 提取套餐名称
+  // Extract plan name
   extractPlanName(planElement) {
     const nameSelectors = [
       '.plan-name',
@@ -727,7 +727,7 @@ class SubscriptionDetector {
     return 'Unknown Plan';
   }
   
-  // 提取套餐价格
+  // Extract plan price
   extractPlanPrice(planElement) {
     const priceSelectors = [
       '.price',
@@ -752,7 +752,7 @@ class SubscriptionDetector {
     return null;
   }
   
-  // 发送支付检测消息
+  // Send payment detection message
   sendPaymentDetection(data) {
     chrome.runtime.sendMessage({
       action: 'paymentDetected',
@@ -760,7 +760,7 @@ class SubscriptionDetector {
     });
   }
   
-  // 发送订阅行为消息
+  // Send subscription action message
   sendSubscriptionAction(data) {
     chrome.runtime.sendMessage({
       action: 'subscriptionAction',
@@ -769,7 +769,7 @@ class SubscriptionDetector {
   }
 }
 
-// 初始化检测器
+// Initialize detector
 if (!window.subscriptionDetector) {
   window.subscriptionDetector = new SubscriptionDetector();
 }

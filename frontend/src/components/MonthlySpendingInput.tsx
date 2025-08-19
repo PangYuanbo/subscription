@@ -72,7 +72,7 @@ const MonthlySpendingInput: React.FC<MonthlySpendingInputProps> = ({
                 {item.month} {item.year}
               </div>
               <div className="text-sm text-gray-600">
-                ${item.projected.toFixed(2)}
+                ${(item.projected || 0).toFixed(2)}
               </div>
               <div>
                 {isEditing ? (
