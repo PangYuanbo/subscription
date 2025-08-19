@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { Subscription, Analytics } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -140,7 +140,7 @@ export const useAuthenticatedApi = () => {
         // Convert backend MonthlyTrend to frontend MonthlySpending format
         const convertedData = {
           ...backendData,
-          monthly_trend: backendData.monthly_trend.map((item: any, index: number) => ({
+          monthly_trend: backendData.monthly_trend.map((item: any) => ({
             month: item.month,
             year: new Date().getFullYear(), // Use current year
             projected: item.total,
