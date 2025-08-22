@@ -99,10 +99,12 @@ async def verify_jwt(credentials: Optional[HTTPAuthorizationCredentials] = Depen
 async def get_or_create_user(user_info: dict, db: AsyncSession):
     """Get or create user from Auth0 info"""
     auth0_user_id = user_info.get("sub")
-    email = user_info.get("email")
     
-    if not auth0_user_id or not email:
-        raise HTTPException(status_code=400, detail="Invalid user information")
+    if not auth0_user_id:
+        raise HTTPException(status_code=400, detail="Invalid user information: missing user ID")
+    
+    # Email is optional - Auth0 may not provide it in JWT token
+    email = user_info.get("email")
     
     # Try to find existing user
     result = await db.execute(
@@ -212,26 +214,39 @@ async def create_subscription(
     db: AsyncSession = Depends(get_db),
     user_info: dict = Depends(verify_jwt)
 ):
+    # Debug logging
+    print(f"Creating subscription: {subscription}")
+    print(f"Service data: {subscription.service}")
+    
     # Get or create user
     current_user = await get_or_create_user(user_info, db)
     
-    service_result = await db.execute(
-        select(Service).where(Service.id == subscription.service_id)
-    )
-    service = service_result.scalar_one_or_none()
+    # Handle service creation/lookup
+    # First try to find service by name (for predefined services)
+    service = None
+    if subscription.service:
+        service_result = await db.execute(
+            select(Service).where(Service.name == subscription.service.name)
+        )
+        service = service_result.scalar_one_or_none()
     
-    if not service:
+    if not service and subscription.service:
+        # Create new service if not found
         service = Service(
-            id=subscription.service_id,
-            name=subscription.service.name if subscription.service else "Unknown",
-            icon_url=subscription.service.icon_url if subscription.service else "",
-            category=subscription.service.category if subscription.service else "Other"
+            name=subscription.service.name,
+            icon_url=subscription.service.icon_url if subscription.service.icon_url else "",
+            category=subscription.service.category
         )
         db.add(service)
+        await db.flush()  # Get the ID
+        await db.refresh(service)
+    
+    if not service:
+        raise HTTPException(status_code=422, detail="Service information is required")
     
     db_subscription = Subscription(
         user_id=current_user.id,  # Associate with current user
-        service_id=subscription.service_id,
+        service_id=service.id,
         account=subscription.account,
         payment_date=datetime.fromisoformat(subscription.payment_date),
         cost=subscription.cost,

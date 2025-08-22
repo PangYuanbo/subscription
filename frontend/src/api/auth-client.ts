@@ -21,7 +21,8 @@ export const createAuthenticatedApi = (accessToken?: string): AxiosInstance => {
     hasPost: typeof api.post === 'function',
     hasGet: typeof api.get === 'function',
     hasToken: !!accessToken,
-    tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none'
+    tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none',
+    headers: api.defaults.headers
   });
 
   // Add response interceptor for better error handling
@@ -44,11 +45,15 @@ export const createAuthenticatedApi = (accessToken?: string): AxiosInstance => {
 export const useAuthenticatedApi = () => {
   const { getAccessTokenSilently, isAuthenticated, isLoading } = useAuth0();
   const [accessToken, setAccessToken] = useState<string | undefined>();
+  const [isTokenReady, setIsTokenReady] = useState(false);
 
   useEffect(() => {
     const updateToken = async () => {
       // Don't update token if Auth0 is still loading
-      if (isLoading) return;
+      if (isLoading) {
+        setIsTokenReady(false);
+        return;
+      }
       
       try {
         if (isAuthenticated) {
@@ -61,13 +66,16 @@ export const useAuthenticatedApi = () => {
           });
           console.log('Got access token');
           setAccessToken(token);
+          setIsTokenReady(true);
         } else {
           console.log('User not authenticated');
           setAccessToken(undefined);
+          setIsTokenReady(true); // Ready even without token for non-auth mode
         }
       } catch (error) {
         console.error('Failed to get access token:', error);
         setAccessToken(undefined);
+        setIsTokenReady(true); // Ready even if token fetch failed
       }
     };
 
@@ -78,6 +86,7 @@ export const useAuthenticatedApi = () => {
   const api = useMemo(() => createAuthenticatedApi(accessToken), [accessToken]);
 
   return {
+    isTokenReady,
     // Add health check
     health: {
       check: async () => {
@@ -102,10 +111,9 @@ export const useAuthenticatedApi = () => {
         });
         console.log('Subscription data:', subscription);
         
-        // Convert frontend data format to backend format
+        // Frontend and backend now use the same string format for service_id
         const backendData = {
           ...subscription,
-          service_id: parseInt(subscription.service_id), // Convert string to int
         };
         
         const response = await api.post('/subscriptions', backendData);
@@ -113,10 +121,9 @@ export const useAuthenticatedApi = () => {
       },
 
       update: async (id: string, subscription: Partial<Subscription>): Promise<Subscription> => {
-        // Convert frontend data format to backend format
+        // Frontend and backend now use the same string format for service_id
         const backendData = {
           ...subscription,
-          ...(subscription.service_id && { service_id: parseInt(subscription.service_id) }),
         };
         const response = await api.put(`/subscriptions/${id}`, backendData);
         return response.data;

@@ -48,7 +48,7 @@ class ServiceResponse(ServiceBase):
         from_attributes = True
 
 class SubscriptionBase(BaseModel):
-    service_id: int
+    service_id: str  # Changed from int to str to match frontend
     account: str
     payment_date: str
     cost: float

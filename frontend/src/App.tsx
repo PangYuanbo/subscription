@@ -89,11 +89,11 @@ function App() {
   const authenticatedApi = useAuthenticatedApi();
 
   useEffect(() => {
-    // Don't load data if Auth0 is still loading
-    if (!isLoading) {
+    // Don't load data if Auth0 is still loading or token is not ready
+    if (!isLoading && authenticatedApi.isTokenReady) {
       loadData();
     }
-  }, [useApi, isAuthenticated, isLoading]);
+  }, [useApi, isAuthenticated, isLoading, authenticatedApi.isTokenReady]);
 
   const loadData = async () => {
     // Check if Auth0 is configured

@@ -13,7 +13,7 @@ class User(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     auth0_user_id = Column(String, unique=True, nullable=False, index=True)  # Auth0 user ID (sub)
-    email = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String, nullable=True, index=True)  # Email is optional since Auth0 may not provide it
     name = Column(String, nullable=True)
     picture = Column(String, nullable=True)  # Profile picture URL
     nickname = Column(String, nullable=True)

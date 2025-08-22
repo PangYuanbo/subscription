@@ -33,7 +33,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
     service_id: '',
     account: '',
     payment_date: '',
-    cost: 0,
+    cost: '' as string | number,
     billing_cycle: 'monthly' as BillingCycle,
     is_trial: false,
     trial_start_date: '',
@@ -69,7 +69,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         service_id: '',
         account: '',
         payment_date: new Date().toISOString().split('T')[0],
-        cost: 0,
+        cost: '',
         billing_cycle: 'monthly' as BillingCycle,
         is_trial: false,
         trial_start_date: new Date().toISOString().split('T')[0],
@@ -125,12 +125,14 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
     }
     
     // Calculate monthly cost
+    const costValue = parseFloat(formData.cost.toString()) || 0;
     const monthly_cost = formData.billing_cycle === 'yearly' 
-      ? formData.cost / 12 
-      : formData.cost;
+      ? costValue / 12 
+      : costValue;
 
     let submissionData: any = {
       ...formData,
+      cost: costValue,
       service,
       monthly_cost,
     };
@@ -231,14 +233,14 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
                   step="0.01"
                   value={formData.cost}
                   onChange={(e) =>
-                    setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })
+                    setFormData({ ...formData, cost: e.target.value })
                   }
                   placeholder={formData.billing_cycle === 'yearly' ? '99.99' : '9.99'}
                   required
                 />
-                {formData.billing_cycle === 'yearly' && formData.cost > 0 && (
+                {formData.billing_cycle === 'yearly' && formData.cost && parseFloat(formData.cost.toString()) > 0 && (
                   <div className="text-xs text-gray-600">
-                    Monthly equivalent: ${(formData.cost / 12).toFixed(2)}
+                    Monthly equivalent: ${(parseFloat(formData.cost.toString()) / 12).toFixed(2)}
                   </div>
                 )}
               </div>

@@ -60,6 +60,15 @@
 3. **保守处理** - 宁可保留代码并添加注释
 4. **单个修改测试** - 每修改一项就测试一次
 
+#### API数据类型不匹配错误 (422 Unprocessable Entity)
+**问题：** 前端和后端对同一字段使用不同数据类型
+**示例：** `service_id` 前端为 `string`，后端为 `int`
+**解决方案：**
+1. 统一数据类型定义（推荐前端string，后端在处理时转换）
+2. 后端在 schema 中使用 `str` 类型，在数据库操作时转换为 `int`
+3. 前端移除不必要的类型转换代码
+**修复记录：** 2025-08-21 已修复 service_id 类型不匹配问题
+
 ### 依赖包相关
 
 #### 正常的第三方包导入（已验证无问题）
@@ -146,7 +155,53 @@ npm run preview
 - 图表组件（Analytics页面）
 - 表单组件（按需加载）
 
+## 调试经验和常见错误
+
+### Auth0认证问题
+
+#### 1. API请求时序问题（已解决）
+**问题：** 前端虽然获取了Auth0 access token，但API请求仍返回401未授权错误
+**原因：** API实例在token获取之前就被创建，导致Authorization头为空
+**解决方案：** 
+- 在`useAuthenticatedApi`中添加`isTokenReady`状态
+- 在App组件中等待`isTokenReady`为true后再发起API请求
+- 使用`useMemo`确保token变化时重新创建API实例
+
+**关键代码修改：**
+```typescript
+// auth-client.ts
+const [isTokenReady, setIsTokenReady] = useState(false);
+// App.tsx  
+useEffect(() => {
+  if (!isLoading && authenticatedApi.isTokenReady) {
+    loadData();
+  }
+}, [useApi, isAuthenticated, isLoading, authenticatedApi.isTokenReady]);
+```
+
+#### 2. JWT token作用域问题（已解决）
+**问题：** Auth0认证成功，token发送正确，但后端报"Invalid user information"错误
+**原因：** JWT token中缺少email字段，只有sub字段
+**解决方案：** 
+- 修改数据库模型，将email字段设为可选 (`nullable=True`)
+- 移除email字段的unique约束
+- 后端只依赖`auth0_user_id`(sub)进行用户识别
+- 不再要求email字段必填
+
+**关键代码修改：**
+```python
+# models.py
+email = Column(String, nullable=True, index=True)  # Email is optional
+
+# main.py
+async def get_or_create_user(user_info: dict, db: AsyncSession):
+    auth0_user_id = user_info.get("sub")
+    if not auth0_user_id:
+        raise HTTPException(status_code=400, detail="Invalid user information: missing user ID")
+    email = user_info.get("email")  # Optional
+```
+
 ---
 
-**最后更新：** 2025-08-18  
+**最后更新：** 2025-08-19  
 **重要提醒：** 修改代码前先检查此文档，避免重复遇到已知问题
