@@ -21,26 +21,26 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    print("❌ DATABASE_URL not found in environment")
+    print("ERROR: DATABASE_URL not found in environment")
     exit(1)
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 
 async def migrate_to_uuid():
     """Perform the migration to UUID primary keys"""
-    print("🚀 Starting UUID migration...")
+    print("Starting UUID migration...")
     
     async with engine.begin() as conn:
-        print("\n📋 Step 1: Creating UUID extension if not exists...")
+        print("\nStep 1: Creating UUID extension if not exists...")
         await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'))
         
-        print("\n📋 Step 2: Dropping existing tables (if any)...")
+        print("\nStep 2: Dropping existing tables (if any)...")
         # Drop tables in correct order (children first)
         await conn.execute(text('DROP TABLE IF EXISTS subscriptions CASCADE;'))
         await conn.execute(text('DROP TABLE IF EXISTS services CASCADE;'))
         await conn.execute(text('DROP TABLE IF EXISTS users CASCADE;'))
         
-        print("\n📋 Step 3: Creating new tables with UUID primary keys...")
+        print("\nStep 3: Creating new tables with UUID primary keys...")
         
         # Create users table with UUID primary key
         await conn.execute(text("""
@@ -96,8 +96,8 @@ async def migrate_to_uuid():
         await conn.execute(text('CREATE INDEX idx_subscriptions_user_id ON subscriptions(user_id);'))
         await conn.execute(text('CREATE INDEX idx_subscriptions_service_id ON subscriptions(service_id);'))
         
-        print("\n✅ UUID migration completed successfully!")
-        print("\n📊 New table structure:")
+        print("\nUUID migration completed successfully!")
+        print("\nNew table structure:")
         
         # Show table info
         result = await conn.execute(text("""
@@ -114,7 +114,7 @@ async def migrate_to_uuid():
 
 async def verify_migration():
     """Verify the migration was successful"""
-    print("\n🔍 Verifying migration...")
+    print("\nVerifying migration...")
     
     async with engine.begin() as conn:
         # Check if tables exist and have correct structure
@@ -127,26 +127,26 @@ async def verify_migration():
         
         table_count = result.scalar()
         if table_count == 3:
-            print("✅ All tables created successfully")
+            print("All tables created successfully")
             
             # Test UUID generation
             result = await conn.execute(text("SELECT uuid_generate_v4() as test_uuid;"))
             test_uuid = result.scalar()
-            print(f"✅ UUID generation working: {test_uuid}")
+            print(f"UUID generation working: {test_uuid}")
             
         else:
-            print(f"❌ Expected 3 tables, found {table_count}")
+            print(f"ERROR: Expected 3 tables, found {table_count}")
 
 async def main():
     """Main migration function"""
     try:
         await migrate_to_uuid()
         await verify_migration()
-        print("\n🎉 Migration completed successfully!")
+        print("\nMigration completed successfully!")
         print("\nYou can now restart your FastAPI server.")
         
     except Exception as e:
-        print(f"\n❌ Migration failed: {e}")
+        print(f"\nERROR: Migration failed: {e}")
         raise
     
     finally:

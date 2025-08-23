@@ -64,25 +64,25 @@ class Subscription(Base):
     service = relationship("Service", back_populates="subscriptions")
 
 class UserAnalytics(Base):
-    """用户分析数据缓存表"""
+    """User analytics data cache table"""
     __tablename__ = "user_analytics"
     
     id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True, index=True)
     
-    # 基础统计数据
+    # Basic statistics
     total_monthly_cost = Column(Float, nullable=False, default=0.0)
     total_annual_cost = Column(Float, nullable=False, default=0.0)
     service_count = Column(Integer, nullable=False, default=0)
     
-    # JSON存储复杂数据结构
+    # JSON storage for complex data structures
     category_breakdown = Column(JSON, nullable=True)  # [{"category": "Entertainment", "total": 25.99}, ...]
     monthly_trend = Column(JSON, nullable=True)       # [{"month": "Jan", "total": 25.99}, ...]
     
-    # 缓存时间戳
+    # Cache timestamps
     last_calculated = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # 关系
+    # Relationships
     user = relationship("User", backref="analytics")

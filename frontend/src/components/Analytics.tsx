@@ -4,17 +4,16 @@ import {
   Pie,
   BarChart,
   Bar,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell,
+  Tooltip,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import MonthlySpendingInput from './MonthlySpendingInput';
 import type { Analytics as AnalyticsData, MonthlySpending } from '@/types';
 
@@ -26,11 +25,23 @@ interface AnalyticsProps {
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) => {
-  const projectedAnnualData = Array.from({ length: 12 }, (_, i) => ({
-    month: new Date(2024, i).toLocaleString('default', { month: 'short' }),
-    projected: data.total_monthly_cost,
-    actual: i < data.monthly_trend.length ? data.monthly_trend[i]?.actual || null : null,
-  }));
+  const [timeRange, setTimeRange] = React.useState("12m");
+  
+  const allProjectedData = Array.from({ length: 12 }, (_, i) => {
+    const date = new Date(2024, i);
+    return {
+      date: date.toISOString().split('T')[0],
+      month: date.toLocaleString('default', { month: 'short' }),
+      projected: data.total_monthly_cost,
+      actual: i < data.monthly_trend.length ? data.monthly_trend[i]?.actual || null : null,
+    };
+  });
+  
+  const filteredData = allProjectedData.filter((item, index) => {
+    if (timeRange === "3m") return index >= 9;
+    if (timeRange === "6m") return index >= 6;
+    return true;
+  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -39,14 +50,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
           <CardTitle>Cost Breakdown by Category</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
                 data={data.category_breakdown}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ category, total }) => `${category}: $${total.toFixed(2)}`}
+                label={({ total }) => `$${total.toFixed(2)}`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="total"
@@ -66,7 +77,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
           <CardTitle>Monthly Spending Trend</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={250}>
             <BarChart data={data.monthly_trend}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
@@ -80,63 +91,92 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Projected Annual Costs</CardTitle>
+        <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
+          <div className="grid flex-1 gap-1">
+            <CardTitle>Projected Annual Costs</CardTitle>
+            <CardDescription>
+              Showing projected vs actual costs over time
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTimeRange("12m")}
+              className={`px-3 py-1 text-sm rounded ${timeRange === "12m" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+            >
+              12m
+            </button>
+            <button
+              onClick={() => setTimeRange("6m")}
+              className={`px-3 py-1 text-sm rounded ${timeRange === "6m" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+            >
+              6m
+            </button>
+            <button
+              onClick={() => setTimeRange("3m")}
+              className={`px-3 py-1 text-sm rounded ${timeRange === "3m" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+            >
+              3m
+            </button>
+          </div>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={projectedAnnualData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => value ? `$${value}` : 'N/A'} />
-              <Legend />
-              <Line
-                type="monotone"
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+          <ResponsiveContainer width="100%" height={250}>
+            <AreaChart data={filteredData}>
+              <defs>
+                <linearGradient id="fillProjected" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
+                </linearGradient>
+                <linearGradient id="fillActual" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+              <Tooltip />
+              <Area
                 dataKey="projected"
+                type="natural"
+                fill="url(#fillProjected)"
                 stroke="#3b82f6"
+                strokeWidth={2}
                 strokeDasharray="5 5"
+                stackId="a"
                 name="Projected"
               />
-              <Line
-                type="monotone"
+              <Area
                 dataKey="actual"
+                type="natural"
+                fill="url(#fillActual)"
                 stroke="#10b981"
+                strokeWidth={2}
+                stackId="a"
                 name="Actual"
-                connectNulls={false}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-2 xl:col-span-3">
+      <Card>
         <CardHeader>
           <CardTitle>Summary Statistics</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-green-50 rounded-lg p-4">
+          <div className="space-y-4">
+            <div>
               <p className="text-sm text-gray-600">Total Monthly Cost</p>
-              <p className="text-2xl font-bold text-green-600">
-                ${data.total_monthly_cost.toFixed(2)}
-              </p>
+              <p className="text-2xl font-bold">${data.total_monthly_cost.toFixed(2)}</p>
             </div>
-            <div className="bg-blue-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600">Projected Annual Cost</p>
-              <p className="text-2xl font-bold text-blue-600">
-                ${data.total_annual_cost.toFixed(2)}
-              </p>
+            <div>
+              <p className="text-sm text-gray-600">Total Annual Cost</p>
+              <p className="text-2xl font-bold">${data.total_annual_cost.toFixed(2)}</p>
             </div>
-            <div className="bg-purple-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600">Active Services</p>
-              <p className="text-2xl font-bold text-purple-600">{data.service_count}</p>
-            </div>
-            <div className="bg-orange-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600">Average Cost</p>
-              <p className="text-2xl font-bold text-orange-600">
-                ${data.service_count > 0 ? (data.total_monthly_cost / data.service_count).toFixed(2) : '0.00'}
-              </p>
+            <div>
+              <p className="text-sm text-gray-600">Service Count</p>
+              <p className="text-2xl font-bold">{data.service_count}</p>
             </div>
           </div>
         </CardContent>

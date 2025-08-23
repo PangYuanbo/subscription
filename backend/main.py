@@ -134,20 +134,20 @@ async def get_or_create_user(user_info: dict, db: AsyncSession):
     return user
 
 async def calculate_and_cache_analytics(user: User, db: AsyncSession):
-    """计算并缓存用户分析数据"""
+    """Calculate and cache user analytics data"""
     
-    # 获取用户的所有订阅
+    # Get user's all subscriptions
     result = await db.execute(
         select(Subscription).where(Subscription.user_id == user.id)
     )
     subscriptions = result.scalars().all()
     
-    # 计算基础统计
+    # Calculate basic statistics
     total_monthly_cost = sum(sub.monthly_cost for sub in subscriptions)
     total_annual_cost = total_monthly_cost * 12
     service_count = len(subscriptions)
     
-    # 计算分类统计
+    # Calculate category statistics
     category_breakdown = {}
     for sub in subscriptions:
         service_result = await db.execute(
@@ -165,7 +165,7 @@ async def calculate_and_cache_analytics(user: User, db: AsyncSession):
         for cat, total in category_breakdown.items()
     ]
     
-    # 生成月度趋势数据
+    # Generate monthly trend data
     monthly_trend = []
     if subscriptions:
         monthly_data = {}
@@ -179,7 +179,7 @@ async def calculate_and_cache_analytics(user: User, db: AsyncSession):
         sorted_months = sorted(monthly_data.keys())
         monthly_trend = [monthly_data[month] for month in sorted_months]
     
-    # 查找或创建分析记录
+    # Find or create analytics record
     analytics_result = await db.execute(
         select(UserAnalytics).where(UserAnalytics.user_id == user.id)
     )
@@ -189,7 +189,7 @@ async def calculate_and_cache_analytics(user: User, db: AsyncSession):
         analytics = UserAnalytics(user_id=user.id)
         db.add(analytics)
     
-    # 更新分析数据
+    # Update analytics data
     analytics.total_monthly_cost = total_monthly_cost
     analytics.total_annual_cost = total_annual_cost
     analytics.service_count = service_count
@@ -329,7 +329,7 @@ async def create_subscription(
     await db.commit()
     await db.refresh(db_subscription)
     
-    # 更新用户分析缓存
+    # Update user analytics cache
     await calculate_and_cache_analytics(current_user, db)
     await db.commit()
     
@@ -407,7 +407,7 @@ async def update_subscription(
     await db.commit()
     await db.refresh(db_subscription)
     
-    # 更新用户分析缓存
+    # Update user analytics cache
     await calculate_and_cache_analytics(current_user, db)
     await db.commit()
     
@@ -468,7 +468,7 @@ async def delete_subscription(
     await db.delete(db_subscription)
     await db.commit()
     
-    # 更新用户分析缓存
+    # Update user analytics cache
     await calculate_and_cache_analytics(current_user, db)
     await db.commit()
     
@@ -483,26 +483,26 @@ async def get_analytics(
     # Get or create user
     current_user = await get_or_create_user(user_info, db)
     
-    # 尝试从缓存获取分析数据
+    # Try to get analytics data from cache
     analytics_result = await db.execute(
         select(UserAnalytics).where(UserAnalytics.user_id == current_user.id)
     )
     analytics = analytics_result.scalar_one_or_none()
     
-    # 检查是否需要刷新缓存
+    # Check if cache needs refresh
     should_refresh = (
         force_refresh or 
         not analytics or 
         not analytics.last_calculated or
-        (datetime.utcnow() - analytics.last_calculated).total_seconds() > 3600  # 1小时过期
+        (datetime.utcnow() - analytics.last_calculated).total_seconds() > 3600  # Expires after 1 hour
     )
     
     if should_refresh:
-        # 重新计算并缓存数据
+        # Recalculate and cache data
         analytics = await calculate_and_cache_analytics(current_user, db)
         await db.commit()
     
-    # 返回缓存的数据
+    # Return cached data
     return AnalyticsResponse(
         total_monthly_cost=analytics.total_monthly_cost,
         total_annual_cost=analytics.total_annual_cost,
@@ -579,7 +579,7 @@ async def create_subscription_from_nlp(
         await db.commit()
         await db.refresh(db_subscription)
         
-        # 更新用户分析缓存
+        # Update user analytics cache
         await calculate_and_cache_analytics(current_user, db)
         await db.commit()
         

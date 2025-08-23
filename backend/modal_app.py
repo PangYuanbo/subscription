@@ -41,11 +41,18 @@ def fastapi_app():
     
     engine = create_async_engine(
         DATABASE_URL, 
-        echo=True,
-        pool_size=20,
-        max_overflow=0,
+        echo=False,
+        pool_size=5,
+        max_overflow=10,
         pool_pre_ping=True,
-        pool_recycle=300
+        pool_recycle=1800,
+        connect_args={
+            "command_timeout": 5,
+            "server_settings": {
+                "application_name": "subscription_app",
+                "jit": "off"
+            }
+        }
     )
     
     AsyncSessionLocal = async_sessionmaker(
@@ -131,7 +138,7 @@ def fastapi_app():
         service: Optional[ServiceResponse]
     
     class SubscriptionCreate(BaseModel):
-        service_id: int
+        service_id: str
         account: str
         payment_date: str
         cost: float
@@ -230,8 +237,8 @@ def fastapi_app():
         auth0_user_id = user_info.get("sub")
         email = user_info.get("email")
         
-        if not auth0_user_id or not email:
-            raise HTTPException(status_code=400, detail="Invalid user information")
+        if not auth0_user_id:
+            raise HTTPException(status_code=400, detail="Invalid user information: missing user ID")
         
         # Try to find existing user
         result = await db.execute(
@@ -366,23 +373,27 @@ def fastapi_app():
         # Get or create user
         current_user = await get_or_create_user(user_info, db)
         
-        service_result = await db.execute(
-            select(Service).where(Service.id == subscription.service_id)
-        )
-        service = service_result.scalar_one_or_none()
+        # Get or create service first
+        service = None
+        if subscription.service_id:
+            service_result = await db.execute(
+                select(Service).where(Service.id == subscription.service_id)
+            )
+            service = service_result.scalar_one_or_none()
         
         if not service:
             service = Service(
-                id=subscription.service_id,
                 name=subscription.service.name if subscription.service else "Unknown",
                 icon_url=subscription.service.icon_url if subscription.service else "",
                 category=subscription.service.category if subscription.service else "Other"
             )
             db.add(service)
+            await db.flush()
+            await db.refresh(service)
         
         db_subscription = Subscription(
             user_id=current_user.id,  # Associate with current user
-            service_id=subscription.service_id,
+            service_id=service.id,
             account=subscription.account,
             payment_date=datetime.fromisoformat(subscription.payment_date),
             cost=subscription.cost,
@@ -432,7 +443,7 @@ def fastapi_app():
         
         result = await db.execute(
             select(Subscription).where(
-                Subscription.id == int(subscription_id),
+                Subscription.id == subscription_id,
                 Subscription.user_id == current_user.id  # Only user's own subscriptions
             )
         )
@@ -503,7 +514,7 @@ def fastapi_app():
         
         result = await db.execute(
             select(Subscription).where(
-                Subscription.id == int(subscription_id),
+                Subscription.id == subscription_id,
                 Subscription.user_id == current_user.id  # Only user's own subscriptions
             )
         )
