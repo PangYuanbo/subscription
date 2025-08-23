@@ -133,9 +133,9 @@ export const useAuthenticatedApi = () => {
         await api.delete(`/subscriptions/${id}`);
       },
 
-      parseNLP: async (text: string): Promise<Subscription> => {
+      parseNLP: async (text: string) => {
         const response = await api.post('/subscriptions/nlp', { text });
-        return response.data.subscription;
+        return response.data; // Return the full NLPSubscriptionResponse
       },
     },
 

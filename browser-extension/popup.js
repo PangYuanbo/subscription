@@ -48,6 +48,11 @@ class SubscriptionPopup {
       this.displayPriceInfo();
     }
     
+    // Show NLP button if no specific data was detected
+    if (!this.extractedData.prices || this.extractedData.prices.length === 0) {
+      document.getElementById('nlp-btn').style.display = 'inline-block';
+    }
+    
     // Pre-fill form data
     this.prefillForm();
   }
@@ -110,6 +115,26 @@ class SubscriptionPopup {
     document.getElementById('billing-cycle').addEventListener('change', (e) => {
       this.updateCostLabel(e.target.value);
     });
+    
+    // Toggle trial details visibility
+    document.getElementById('is-trial').addEventListener('change', (e) => {
+      this.toggleTrialDetails(e.target.checked);
+    });
+    
+    // NLP section navigation
+    document.getElementById('nlp-btn')?.addEventListener('click', () => {
+      this.showNLPSection();
+    });
+    
+    document.getElementById('back-to-form-btn')?.addEventListener('click', () => {
+      this.showFormSection();
+    });
+    
+    // NLP form submission
+    document.getElementById('nlp-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.handleNLPSubmit();
+    });
   }
   
   updateCostLabel(billingCycle) {
@@ -120,6 +145,20 @@ class SubscriptionPopup {
       costLabel.textContent = 'Monthly Amount';
     } else {
       costLabel.textContent = 'Cost';
+    }
+  }
+  
+  toggleTrialDetails(isVisible) {
+    const trialDetails = document.getElementById('trial-details');
+    trialDetails.style.display = isVisible ? 'block' : 'none';
+    
+    if (isVisible) {
+      // Set default trial start date to today
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('trial-start-date').value = today;
+      
+      // Set default trial duration to 30 days
+      document.getElementById('trial-duration').value = 30;
     }
   }
   
@@ -174,8 +213,9 @@ class SubscriptionPopup {
   collectFormData() {
     const cost = parseFloat(document.getElementById('cost').value);
     const billingCycle = document.getElementById('billing-cycle').value;
+    const isTrial = document.getElementById('is-trial').checked;
     
-    return {
+    const data = {
       serviceName: this.extractedData?.serviceName || 'Unknown Service',
       category: this.extractedData?.category || 'Other',
       account: document.getElementById('account').value,
@@ -184,8 +224,31 @@ class SubscriptionPopup {
       monthly_cost: billingCycle === 'yearly' ? cost / 12 : cost,
       payment_date: document.getElementById('payment-date').value,
       url: this.extractedData?.url,
-      detectedAt: this.extractedData?.detectedAt
+      detectedAt: this.extractedData?.detectedAt,
+      is_trial: isTrial
     };
+    
+    // Add trial-specific data if applicable
+    if (isTrial) {
+      const trialDuration = document.getElementById('trial-duration').value;
+      const trialStartDate = document.getElementById('trial-start-date').value;
+      
+      if (trialDuration) {
+        data.trial_duration_days = parseInt(trialDuration);
+      }
+      
+      if (trialStartDate) {
+        data.trial_start_date = trialStartDate;
+        
+        // Calculate trial end date
+        const startDate = new Date(trialStartDate);
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + (parseInt(trialDuration) || 30));
+        data.trial_end_date = endDate.toISOString().split('T')[0];
+      }
+    }
+    
+    return data;
   }
   
   validateFormData(data) {
@@ -196,43 +259,86 @@ class SubscriptionPopup {
   }
   
   async submitToMainApp(data) {
-    // Construct subscription data
+    // Construct subscription data with new structure
     const subscriptionData = {
       service_id: 'custom',
       service: {
-        id: 'custom',
         name: data.serviceName,
-        category: data.category
+        category: data.category,
+        icon_url: this.extractedData?.iconUrl || ''
       },
       account: data.account,
       payment_date: data.payment_date,
       cost: data.cost,
       billing_cycle: data.billing_cycle,
-      monthly_cost: data.monthly_cost
+      monthly_cost: data.monthly_cost,
+      is_trial: data.is_trial || false
     };
     
-    // Try to send to local main application
-    try {
-      const response = await fetch('http://localhost:5173/api/subscriptions', {
-        method: 'POST',
-        headers: {
+    // Add trial fields if applicable
+    if (data.is_trial) {
+      if (data.trial_start_date) subscriptionData.trial_start_date = data.trial_start_date;
+      if (data.trial_end_date) subscriptionData.trial_end_date = data.trial_end_date;
+      if (data.trial_duration_days) subscriptionData.trial_duration_days = data.trial_duration_days;
+    }
+    
+    // Get stored auth token if available
+    const authData = await this.getStoredAuthData();
+    
+    // Try multiple endpoints in order of preference
+    const endpoints = [
+      'https://subscription-tracker-backend.modal.run/subscriptions',
+      'http://localhost:8000/subscriptions',
+      'http://localhost:5173/api/subscriptions'
+    ];
+    
+    let lastError = null;
+    
+    for (const endpoint of endpoints) {
+      try {
+        const headers = {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(subscriptionData)
-      });
-      
-      if (!response.ok) {
-        throw new Error('Network request failed');
+        };
+        
+        // Add auth header if available
+        if (authData && authData.access_token) {
+          headers['Authorization'] = `Bearer ${authData.access_token}`;
+        }
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(subscriptionData)
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Subscription added successfully:', result);
+          return; // Success, exit function
+        } else {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+      } catch (error) {
+        console.log(`Failed to submit to ${endpoint}:`, error);
+        lastError = error;
+        continue; // Try next endpoint
       }
-      
-      const result = await response.json();
-      console.log('Subscription added successfully:', result);
-      
+    }
+    
+    // If all endpoints failed, try alternative method
+    console.log('All direct API calls failed, trying alternative method');
+    await this.submitViaMessage(subscriptionData);
+  }
+  
+  async getStoredAuthData() {
+    try {
+      const result = await chrome.storage.local.get(['authData']);
+      return result.authData || null;
     } catch (error) {
-      console.log('Direct API call failed, trying alternative method:', error);
-      
-      // If direct API call fails, try alternative method via message passing
-      await this.submitViaMessage(subscriptionData);
+      console.error('Error getting stored auth data:', error);
+      return null;
     }
   }
   
@@ -250,6 +356,108 @@ class SubscriptionPopup {
       action: 'newSubscriptionAdded',
       data: subscriptionData
     });
+  }
+  
+  showNLPSection() {
+    document.getElementById('subscription-form').style.display = 'none';
+    document.getElementById('nlp-section').style.display = 'block';
+  }
+  
+  showFormSection() {
+    document.getElementById('subscription-form').style.display = 'block';
+    document.getElementById('nlp-section').style.display = 'none';
+  }
+  
+  async handleNLPSubmit() {
+    const submitBtn = document.getElementById('nlp-submit-btn');
+    const errorEl = document.getElementById('nlp-error');
+    const successEl = document.getElementById('nlp-success');
+    
+    // Hide previous messages
+    errorEl.style.display = 'none';
+    successEl.style.display = 'none';
+    
+    // Disable submit button
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<div class="loading-spinner"></div>Processing...';
+    
+    try {
+      const text = document.getElementById('nlp-text').value.trim();
+      if (!text) {
+        throw new Error('Please enter a subscription description');
+      }
+      
+      // Submit to NLP API
+      await this.submitNLPRequest(text);
+      
+      // Show success message
+      successEl.textContent = 'Subscription parsed and added successfully!';
+      successEl.style.display = 'block';
+      
+      // Clean up stored data
+      await chrome.storage.local.remove(['pendingSubscription']);
+      
+      // Delay window close
+      setTimeout(() => {
+        window.close();
+      }, 1500);
+      
+    } catch (error) {
+      console.error('NLP submission error:', error);
+      errorEl.textContent = error.message || 'Failed to process description, please try again';
+      errorEl.style.display = 'block';
+    } finally {
+      // Restore submit button
+      submitBtn.disabled = false;
+      submitBtn.textContent = '🤖 Parse & Add';
+    }
+  }
+  
+  async submitNLPRequest(text) {
+    const authData = await this.getStoredAuthData();
+    
+    const endpoints = [
+      'https://subscription-tracker-backend.modal.run/subscriptions/nlp',
+      'http://localhost:8000/subscriptions/nlp'
+    ];
+    
+    const requestData = { text: text };
+    
+    for (const endpoint of endpoints) {
+      try {
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+        
+        // Add auth header if available
+        if (authData && authData.access_token) {
+          headers['Authorization'] = `Bearer ${authData.access_token}`;
+        }
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(requestData)
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('NLP subscription processed successfully:', result);
+          return; // Success, exit function
+        } else {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+      } catch (error) {
+        console.log(`Failed to submit NLP to ${endpoint}:`, error);
+        if (endpoint === endpoints[endpoints.length - 1]) {
+          // Last endpoint failed, throw error
+          throw new Error('Unable to process subscription description. Please check your connection and try again.');
+        }
+        continue; // Try next endpoint
+      }
+    }
   }
 }
 

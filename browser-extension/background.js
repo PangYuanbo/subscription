@@ -132,6 +132,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'openPopup':
       openSubscriptionPopup(request.data);
       break;
+      
+    case 'newSubscriptionAdded':
+      handleNewSubscriptionAdded(request.data);
+      break;
+      
+    case 'storeAuthData':
+      handleAuthDataStorage(request.data);
+      break;
+      
+    case 'getAuthData':
+      handleAuthDataRequest(sendResponse);
+      return true; // Keep message channel open for async response
+      break;
   }
   
   return true; // Keep message channel open
@@ -235,31 +248,6 @@ function identifyService(url, pageTitle) {
   };
 }
 
-// Extract price information
-function extractPriceInfo(content) {
-  const priceInfo = {};
-  
-  // Use regular expressions to extract prices
-  SUBSCRIPTION_PATTERNS.pricePatterns.forEach(pattern => {
-    const matches = content.match(pattern);
-    if (matches && matches.length > 0) {
-      // Analyze price and billing cycle
-      matches.forEach(match => {
-        const price = parseFloat(match.replace(/[^\d.]/g, ''));
-        const isYearly = /year|annual|yr/i.test(match);
-        const isMonthly = /month|monthly|mo/i.test(match);
-        
-        if (isYearly) {
-          priceInfo.yearlyPrice = price;
-        } else if (isMonthly || (!isYearly && !isMonthly)) {
-          priceInfo.monthlyPrice = price;
-        }
-      });
-    }
-  });
-  
-  return priceInfo;
-}
 
 // Show notification
 function showNotification(title, message) {
@@ -392,7 +380,93 @@ function openSubscriptionPopup(data) {
   chrome.windows.create({
     url: chrome.runtime.getURL('popup.html'),
     type: 'popup',
-    width: 400,
-    height: 600
+    width: 420,
+    height: 650
   });
+}
+
+// Handle new subscription added
+function handleNewSubscriptionAdded(data) {
+  console.log('New subscription added via extension:', data);
+  
+  // Show success notification
+  showNotification(
+    '✅ Subscription Added',
+    `${data.service?.name || 'Subscription'} has been added successfully!`
+  );
+  
+  // Clean up any pending data
+  chrome.storage.local.remove(['pendingSubscription']);
+}
+
+// Handle auth data storage
+async function handleAuthDataStorage(data) {
+  try {
+    await chrome.storage.local.set({ authData: data });
+    console.log('Auth data stored successfully');
+  } catch (error) {
+    console.error('Error storing auth data:', error);
+  }
+}
+
+// Handle auth data request
+async function handleAuthDataRequest(sendResponse) {
+  try {
+    const result = await chrome.storage.local.get(['authData']);
+    sendResponse({ success: true, data: result.authData });
+  } catch (error) {
+    console.error('Error retrieving auth data:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
+// Enhanced price extraction with trial support
+function extractPriceInfo(content) {
+  const priceInfo = {};
+  const prices = [];
+  
+  // Use regular expressions to extract prices
+  SUBSCRIPTION_PATTERNS.pricePatterns.forEach(pattern => {
+    const matches = content.match(pattern);
+    if (matches && matches.length > 0) {
+      matches.forEach(match => {
+        const price = parseFloat(match.replace(/[^\d.]/g, ''));
+        const isYearly = /year|annual|yr/i.test(match);
+        const isMonthly = /month|monthly|mo/i.test(match);
+        
+        let period = 'unknown';
+        if (isYearly) {
+          period = 'yearly';
+          priceInfo.yearlyPrice = price;
+        } else if (isMonthly) {
+          period = 'monthly'; 
+          priceInfo.monthlyPrice = price;
+        }
+        
+        prices.push({
+          text: match,
+          amount: price,
+          period: period
+        });
+      });
+    }
+  });
+  
+  // Detect trial information
+  const trialRegex = /(\d+)[\s-]*(?:day|week|month)[\s]*(?:free[\s]*)?trial/gi;
+  const trialMatches = content.match(trialRegex);
+  if (trialMatches && trialMatches.length > 0) {
+    priceInfo.hasTrial = true;
+    priceInfo.trialInfo = trialMatches;
+  }
+  
+  // Detect billing cycles
+  const billingOptions = [];
+  if (priceInfo.monthlyPrice) billingOptions.push('monthly');
+  if (priceInfo.yearlyPrice) billingOptions.push('yearly');
+  
+  priceInfo.prices = prices;
+  priceInfo.billingOptions = billingOptions;
+  
+  return priceInfo;
 }

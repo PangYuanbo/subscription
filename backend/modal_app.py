@@ -21,6 +21,8 @@ def fastapi_app():
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
     from sqlalchemy.orm import declarative_base
     from sqlalchemy import select, Column, Integer, String, Float, DateTime, ForeignKey, func, Boolean, Text
+    from sqlalchemy.dialects.postgresql import UUID
+    import uuid
     from pydantic import BaseModel
     from typing import List, Optional
     from datetime import datetime, timedelta
@@ -58,9 +60,9 @@ def fastapi_app():
     class User(Base):
         __tablename__ = "users"
         
-        id = Column(Integer, primary_key=True, index=True)
+        id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
         auth0_user_id = Column(String, unique=True, nullable=False, index=True)
-        email = Column(String, unique=True, nullable=False, index=True)
+        email = Column(String, nullable=True, index=True)  # Email is optional since Auth0 may not provide it
         name = Column(String, nullable=True)
         picture = Column(String, nullable=True)
         nickname = Column(String, nullable=True)
@@ -71,7 +73,7 @@ def fastapi_app():
     class Service(Base):
         __tablename__ = "services"
         
-        id = Column(Integer, primary_key=True, index=True)
+        id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
         name = Column(String, nullable=False)
         icon_url = Column(String)
         category = Column(String, nullable=False)
@@ -81,9 +83,9 @@ def fastapi_app():
     class Subscription(Base):
         __tablename__ = "subscriptions"
         
-        id = Column(Integer, primary_key=True, index=True)
-        user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-        service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
+        id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
+        user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+        service_id = Column(UUID(as_uuid=True), ForeignKey("services.id"), nullable=False)
         account = Column(String, nullable=False)
         payment_date = Column(DateTime, nullable=False)
         cost = Column(Float, nullable=False, default=0.0)

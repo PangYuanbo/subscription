@@ -6,11 +6,13 @@
   "permissions": [
     "activeTab",
     "storage",
-    "scripting"
+    "scripting",
+    "notifications"
   ],
   "host_permissions": [
     "http://localhost:*/*",
-    "https://localhost:*/*"
+    "https://localhost:*/*",
+    "https://subscription-tracker-backend.modal.run/*"
   ],
   "background": {
     "service_worker": "background.js"

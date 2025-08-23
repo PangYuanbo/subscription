@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ServiceAutocomplete from '@/components/ServiceAutocomplete';
+import AccountAutocomplete from '@/components/AccountAutocomplete';
 import { PREDEFINED_SERVICES } from '@/data/services';
 import { getCommonTrialDurations, calculateTrialEndDate } from '@/utils/trialUtils';
 import type { ServiceData } from '@/data/services';
@@ -21,6 +22,7 @@ interface SubscriptionFormProps {
   onClose: () => void;
   onSubmit: (subscription: Omit<Subscription, 'id'>) => void;
   subscription?: Subscription | null;
+  existingSubscriptions?: Subscription[];
 }
 
 const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
@@ -28,6 +30,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
   onClose,
   onSubmit,
   subscription,
+  existingSubscriptions = [],
 }) => {
   const [formData, setFormData] = useState({
     service_id: '',
@@ -179,16 +182,15 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
               <Label htmlFor="account" className="text-right">
                 Account
               </Label>
-              <Input
-                id="account"
-                className="col-span-3"
-                value={formData.account}
-                onChange={(e) =>
-                  setFormData({ ...formData, account: e.target.value })
-                }
-                placeholder="user@example.com"
-                required
-              />
+              <div className="col-span-3">
+                <AccountAutocomplete
+                  value={formData.account}
+                  onChange={(value) => setFormData({ ...formData, account: value })}
+                  subscriptions={existingSubscriptions}
+                  placeholder="user@example.com"
+                  required
+                />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="payment_date" className="text-right">

@@ -8,10 +8,11 @@ from datetime import datetime, timedelta
 import os
 import jwt
 import httpx
+import uuid
 from dotenv import load_dotenv
 
 from database import get_db, init_db
-from models import Subscription, Service, User
+from models import Subscription, Service, User, UserAnalytics
 from openrouter_client import openrouter_client
 from schemas import (
     SubscriptionCreate, 
@@ -132,8 +133,78 @@ async def get_or_create_user(user_info: dict, db: AsyncSession):
     
     return user
 
+async def calculate_and_cache_analytics(user: User, db: AsyncSession):
+    """计算并缓存用户分析数据"""
+    
+    # 获取用户的所有订阅
+    result = await db.execute(
+        select(Subscription).where(Subscription.user_id == user.id)
+    )
+    subscriptions = result.scalars().all()
+    
+    # 计算基础统计
+    total_monthly_cost = sum(sub.monthly_cost for sub in subscriptions)
+    total_annual_cost = total_monthly_cost * 12
+    service_count = len(subscriptions)
+    
+    # 计算分类统计
+    category_breakdown = {}
+    for sub in subscriptions:
+        service_result = await db.execute(
+            select(Service).where(Service.id == sub.service_id)
+        )
+        service = service_result.scalar_one_or_none()
+        category = service.category if service else "Other"
+        
+        if category not in category_breakdown:
+            category_breakdown[category] = 0
+        category_breakdown[category] += float(sub.monthly_cost)
+    
+    category_list = [
+        {"category": cat, "total": total}
+        for cat, total in category_breakdown.items()
+    ]
+    
+    # 生成月度趋势数据
+    monthly_trend = []
+    if subscriptions:
+        monthly_data = {}
+        for sub in subscriptions:
+            month_key = sub.created_at.strftime("%Y-%m")
+            month_name = sub.created_at.strftime("%b")
+            if month_key not in monthly_data:
+                monthly_data[month_key] = {"month": month_name, "total": 0}
+            monthly_data[month_key]["total"] += sub.monthly_cost
+        
+        sorted_months = sorted(monthly_data.keys())
+        monthly_trend = [monthly_data[month] for month in sorted_months]
+    
+    # 查找或创建分析记录
+    analytics_result = await db.execute(
+        select(UserAnalytics).where(UserAnalytics.user_id == user.id)
+    )
+    analytics = analytics_result.scalar_one_or_none()
+    
+    if not analytics:
+        analytics = UserAnalytics(user_id=user.id)
+        db.add(analytics)
+    
+    # 更新分析数据
+    analytics.total_monthly_cost = total_monthly_cost
+    analytics.total_annual_cost = total_annual_cost
+    analytics.service_count = service_count
+    analytics.category_breakdown = category_list
+    analytics.monthly_trend = monthly_trend
+    analytics.last_calculated = datetime.utcnow()
+    
+    await db.flush()
+    await db.refresh(analytics)
+    
+    return analytics
+
 @app.on_event("startup")
 async def startup_event():
+    # Create the user_analytics table if it doesn't exist
     await init_db()
 
 @app.get("/")
@@ -214,10 +285,6 @@ async def create_subscription(
     db: AsyncSession = Depends(get_db),
     user_info: dict = Depends(verify_jwt)
 ):
-    # Debug logging
-    print(f"Creating subscription: {subscription}")
-    print(f"Service data: {subscription.service}")
-    
     # Get or create user
     current_user = await get_or_create_user(user_info, db)
     
@@ -262,6 +329,10 @@ async def create_subscription(
     await db.commit()
     await db.refresh(db_subscription)
     
+    # 更新用户分析缓存
+    await calculate_and_cache_analytics(current_user, db)
+    await db.commit()
+    
     return SubscriptionResponse(
         id=str(db_subscription.id),
         user_id=str(db_subscription.user_id),
@@ -295,9 +366,15 @@ async def update_subscription(
     # Get or create user
     current_user = await get_or_create_user(user_info, db)
     
+    # Convert subscription_id to UUID if it's a string
+    try:
+        subscription_uuid = uuid.UUID(subscription_id) if isinstance(subscription_id, str) else subscription_id
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid subscription ID format")
+    
     result = await db.execute(
         select(Subscription).where(
-            Subscription.id == int(subscription_id),
+            Subscription.id == subscription_uuid,
             Subscription.user_id == current_user.id  # Only user's own subscriptions
         )
     )
@@ -329,6 +406,10 @@ async def update_subscription(
     
     await db.commit()
     await db.refresh(db_subscription)
+    
+    # 更新用户分析缓存
+    await calculate_and_cache_analytics(current_user, db)
+    await db.commit()
     
     service_result = await db.execute(
         select(Service).where(Service.id == db_subscription.service_id)
@@ -367,9 +448,15 @@ async def delete_subscription(
     # Get or create user
     current_user = await get_or_create_user(user_info, db)
     
+    # Convert subscription_id to UUID if it's a string
+    try:
+        subscription_uuid = uuid.UUID(subscription_id) if isinstance(subscription_id, str) else subscription_id
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid subscription ID format")
+    
     result = await db.execute(
         select(Subscription).where(
-            Subscription.id == int(subscription_id),
+            Subscription.id == subscription_uuid,
             Subscription.user_id == current_user.id  # Only user's own subscriptions
         )
     )
@@ -381,58 +468,47 @@ async def delete_subscription(
     await db.delete(db_subscription)
     await db.commit()
     
+    # 更新用户分析缓存
+    await calculate_and_cache_analytics(current_user, db)
+    await db.commit()
+    
     return {"message": "Subscription deleted successfully"}
 
 @app.get("/analytics", response_model=AnalyticsResponse)
 async def get_analytics(
     db: AsyncSession = Depends(get_db),
-    user_info: dict = Depends(verify_jwt)
+    user_info: dict = Depends(verify_jwt),
+    force_refresh: bool = False
 ):
     # Get or create user
     current_user = await get_or_create_user(user_info, db)
     
-    # Get user's subscriptions only
-    result = await db.execute(
-        select(Subscription).where(Subscription.user_id == current_user.id)
+    # 尝试从缓存获取分析数据
+    analytics_result = await db.execute(
+        select(UserAnalytics).where(UserAnalytics.user_id == current_user.id)
     )
-    subscriptions = result.scalars().all()
+    analytics = analytics_result.scalar_one_or_none()
     
-    total_monthly_cost = sum(sub.monthly_cost for sub in subscriptions)
-    total_annual_cost = total_monthly_cost * 12
+    # 检查是否需要刷新缓存
+    should_refresh = (
+        force_refresh or 
+        not analytics or 
+        not analytics.last_calculated or
+        (datetime.utcnow() - analytics.last_calculated).total_seconds() > 3600  # 1小时过期
+    )
     
-    category_breakdown = {}
-    for sub in subscriptions:
-        service_result = await db.execute(
-            select(Service).where(Service.id == sub.service_id)
-        )
-        service = service_result.scalar_one_or_none()
-        category = service.category if service else "Other"
-        
-        if category not in category_breakdown:
-            category_breakdown[category] = 0
-        category_breakdown[category] += float(sub.monthly_cost)
+    if should_refresh:
+        # 重新计算并缓存数据
+        analytics = await calculate_and_cache_analytics(current_user, db)
+        await db.commit()
     
-    category_list = [
-        {"category": cat, "total": total}
-        for cat, total in category_breakdown.items()
-    ]
-    
-    current_date = datetime.now()
-    monthly_trend = []
-    for i in range(6):
-        month_date = current_date - timedelta(days=30 * (5-i))
-        month_name = month_date.strftime("%b")
-        monthly_trend.append({
-            "month": month_name,
-            "total": total_monthly_cost * (0.8 + (i * 0.04))
-        })
-    
+    # 返回缓存的数据
     return AnalyticsResponse(
-        total_monthly_cost=total_monthly_cost,
-        total_annual_cost=total_annual_cost,
-        category_breakdown=category_list,
-        monthly_trend=monthly_trend,
-        service_count=len(subscriptions)
+        total_monthly_cost=analytics.total_monthly_cost,
+        total_annual_cost=analytics.total_annual_cost,
+        category_breakdown=analytics.category_breakdown or [],
+        monthly_trend=analytics.monthly_trend or [],
+        service_count=analytics.service_count
     )
 
 @app.post("/subscriptions/nlp", response_model=NLPSubscriptionResponse)
@@ -502,6 +578,10 @@ async def create_subscription_from_nlp(
         db.add(db_subscription)
         await db.commit()
         await db.refresh(db_subscription)
+        
+        # 更新用户分析缓存
+        await calculate_and_cache_analytics(current_user, db)
+        await db.commit()
         
         subscription_response = SubscriptionResponse(
             id=str(db_subscription.id),

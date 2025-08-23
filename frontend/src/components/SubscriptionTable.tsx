@@ -11,7 +11,8 @@ import {
   Search,
   ArrowUpDown,
   Plus,
-  MessageSquare
+  MessageSquare,
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -21,6 +22,7 @@ interface SubscriptionTableProps {
   onDelete: (id: string) => void;
   onAdd: () => void;
   onNLPAdd?: () => void;
+  onRenew: (id: string) => void;
 }
 
 const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
@@ -29,10 +31,12 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
   onDelete,
   onAdd,
   onNLPAdd,
+  onRenew,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<keyof Subscription>('service');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [renewingIds, setRenewingIds] = useState<Set<string>>(new Set());
 
   const filteredSubscriptions = subscriptions.filter((sub) =>
     sub.service?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -59,6 +63,24 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
     } else {
       setSortField(field);
       setSortDirection('asc');
+    }
+  };
+
+  const handleRenewClick = async (id: string) => {
+    // 添加到正在renew的ID集合中
+    setRenewingIds(prev => new Set(prev).add(id));
+    
+    try {
+      await onRenew(id);
+    } finally {
+      // 等待3.5秒让用户看到动画，然后移除
+      setTimeout(() => {
+        setRenewingIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(id);
+          return newSet;
+        });
+      }, 3500); // 3.5秒后停止旋转
     }
   };
 
@@ -186,7 +208,21 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => handleRenewClick(subscription.id)}
+                      title="Renew subscription"
+                      disabled={renewingIds.has(subscription.id)}
+                    >
+                      <RefreshCw 
+                        className={`h-4 w-4 text-green-500 transition-transform duration-300 ${
+                          renewingIds.has(subscription.id) ? 'animate-spin' : ''
+                        }`} 
+                      />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => onEdit(subscription)}
+                      title="Edit subscription"
                     >
                       <Pencil className="h-4 w-4 text-gray-500" />
                     </Button>
@@ -194,6 +230,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
                       variant="ghost"
                       size="icon"
                       onClick={() => onDelete(subscription.id)}
+                      title="Delete subscription"
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>

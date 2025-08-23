@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, MessageSquare, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { useAuthenticatedApi } from '@/api/auth-client';
 
 interface NLPSubscriptionFormProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<NLPResponse | null>(null);
+  const authenticatedApi = useAuthenticatedApi();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,28 +29,20 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
     setResponse(null);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${apiUrl}/subscriptions/nlp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: inputText }),
-      });
+      const nlpResponse = await authenticatedApi.subscriptions.parseNLP(inputText);
+      setResponse(nlpResponse);
 
-      const data = await res.json();
-      setResponse(data);
-
-      if (data.success) {
+      if (nlpResponse.success) {
         setTimeout(() => {
           onSuccess();
           handleClose();
         }, 2000);
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('NLP parsing error:', error);
       setResponse({
         success: false,
-        message: 'Network connection failed, please check if backend service is running',
+        message: error.response?.data?.detail || error.message || 'Failed to parse subscription information',
       });
     } finally {
       setIsLoading(false);

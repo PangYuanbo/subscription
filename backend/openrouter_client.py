@@ -117,11 +117,31 @@ Return only JSON, no other explanation.
         """Try to parse common subscription patterns using regex"""
         text_lower = text.lower()
         
-        # Amazon Prime pattern
-        if "amazon" in text_lower and "prime" in text_lower:
+        # Common service patterns
+        service_patterns = {
+            "netflix": {"name": "Netflix", "category": "Entertainment", "default_cost": 15.99},
+            "spotify": {"name": "Spotify", "category": "Entertainment", "default_cost": 9.99},
+            "amazon prime": {"name": "Amazon Prime", "category": "Entertainment", "default_cost": 8.99},
+            "disney": {"name": "Disney+", "category": "Entertainment", "default_cost": 7.99},
+            "github": {"name": "GitHub", "category": "Development", "default_cost": 7.00},
+            "youtube premium": {"name": "YouTube Premium", "category": "Entertainment", "default_cost": 11.99},
+        }
+        
+        # Find matching service
+        detected_service = None
+        for pattern, info in service_patterns.items():
+            if pattern in text_lower:
+                detected_service = info
+                break
+        
+        if detected_service:
             # Extract price
-            price_match = re.search(r'(\d+\.?\d*)', text)
-            monthly_cost = float(price_match.group(1)) if price_match else 6.99
+            price_match = re.search(r'\$?(\d+\.?\d*)', text)
+            monthly_cost = float(price_match.group(1)) if price_match else detected_service["default_cost"]
+            
+            # Extract account if provided
+            email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', text)
+            account = email_match.group(0) if email_match else "Default Account"
             
             # Check for trial period
             is_trial = False
@@ -129,17 +149,19 @@ Return only JSON, no other explanation.
             if any(word in text_lower for word in ["trial", "free"]):
                 is_trial = True
                 # Look for duration
-                if "3 months" in text_lower or "three months" in text_lower:
-                    trial_days = 90
-                elif "1 month" in text_lower or "one month" in text_lower:
+                if "30 days" in text_lower or "30-day" in text_lower or "1 month" in text_lower:
                     trial_days = 30
-                elif "2 months" in text_lower or "two months" in text_lower:
-                    trial_days = 60
+                elif "7 days" in text_lower or "7-day" in text_lower or "1 week" in text_lower:
+                    trial_days = 7
+                elif "14 days" in text_lower or "14-day" in text_lower or "2 weeks" in text_lower:
+                    trial_days = 14
+                else:
+                    trial_days = 30  # Default
             
             return {
-                "service_name": "Amazon Prime",
-                "service_category": "Streaming",
-                "account": "Default Account",
+                "service_name": detected_service["name"],
+                "service_category": detected_service["category"],
+                "account": account,
                 "monthly_cost": monthly_cost,
                 "payment_date": self._get_default_payment_date(),
                 "is_trial": is_trial,

@@ -1,8 +1,10 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum, Boolean, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum, Boolean, Text, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 import enum
+import uuid
 
 class BillingCycle(enum.Enum):
     monthly = "monthly"
@@ -11,7 +13,7 @@ class BillingCycle(enum.Enum):
 class User(Base):
     __tablename__ = "users"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
     auth0_user_id = Column(String, unique=True, nullable=False, index=True)  # Auth0 user ID (sub)
     email = Column(String, nullable=True, index=True)  # Email is optional since Auth0 may not provide it
     name = Column(String, nullable=True)
@@ -27,7 +29,7 @@ class User(Base):
 class Service(Base):
     __tablename__ = "services"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     icon_url = Column(String)
     category = Column(String, nullable=False)
@@ -39,9 +41,9 @@ class Service(Base):
 class Subscription(Base):
     __tablename__ = "subscriptions"
     
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)  # Associated user
-    service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)  # Associated user
+    service_id = Column(UUID(as_uuid=True), ForeignKey("services.id"), nullable=False)
     account = Column(String, nullable=False)
     payment_date = Column(DateTime, nullable=False)
     cost = Column(Float, nullable=False)  # Original cost
@@ -60,3 +62,27 @@ class Subscription(Base):
     # Relationships
     user = relationship("User", back_populates="subscriptions")
     service = relationship("Service", back_populates="subscriptions")
+
+class UserAnalytics(Base):
+    """用户分析数据缓存表"""
+    __tablename__ = "user_analytics"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    
+    # 基础统计数据
+    total_monthly_cost = Column(Float, nullable=False, default=0.0)
+    total_annual_cost = Column(Float, nullable=False, default=0.0)
+    service_count = Column(Integer, nullable=False, default=0)
+    
+    # JSON存储复杂数据结构
+    category_breakdown = Column(JSON, nullable=True)  # [{"category": "Entertainment", "total": 25.99}, ...]
+    monthly_trend = Column(JSON, nullable=True)       # [{"month": "Jan", "total": 25.99}, ...]
+    
+    # 缓存时间戳
+    last_calculated = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # 关系
+    user = relationship("User", backref="analytics")

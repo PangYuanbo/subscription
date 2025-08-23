@@ -278,6 +278,26 @@
           <input type="date" id="payment-date" required>
         </div>
 
+        <!-- Trial Period Section -->
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="is-trial" style="margin-right: 8px;">
+            This is a trial subscription
+          </label>
+        </div>
+
+        <div id="trial-details" style="display: none;">
+          <div class="form-group">
+            <label for="trial-duration">Trial Duration (days)</label>
+            <input type="number" id="trial-duration" min="1" max="365" placeholder="Enter trial duration">
+          </div>
+          
+          <div class="form-group">
+            <label for="trial-start-date">Trial Start Date</label>
+            <input type="date" id="trial-start-date">
+          </div>
+        </div>
+
         <div id="error-message" class="error" style="display: none;"></div>
         <div id="success-message" class="success" style="display: none;"></div>
 
@@ -285,8 +305,44 @@
           <button type="button" class="btn btn-secondary" onclick="window.close()">
             Cancel
           </button>
+          <button type="button" class="btn btn-secondary" id="nlp-btn" style="display: none;">
+            🤖 Smart Parse
+          </button>
           <button type="submit" class="btn btn-primary" id="submit-btn">
             Add Subscription
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- NLP Processing Section -->
+    <div id="nlp-section" style="display: none;">
+      <div class="status detected">
+        <span class="detected-badge">Smart Parser</span>
+        <strong style="margin-left: 8px;">Describe your subscription in natural language</strong>
+      </div>
+
+      <form id="nlp-form">
+        <div class="form-group">
+          <label for="nlp-text">Subscription Description</label>
+          <textarea 
+            id="nlp-text" 
+            placeholder="e.g., 'I just signed up for Netflix Premium for $15.99 per month, my account is john@email.com and my next payment is on January 15th'"
+            rows="4"
+            style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical;"
+            required
+          ></textarea>
+        </div>
+
+        <div id="nlp-error" class="error" style="display: none;"></div>
+        <div id="nlp-success" class="success" style="display: none;"></div>
+
+        <div class="button-group">
+          <button type="button" class="btn btn-secondary" id="back-to-form-btn">
+            ← Back to Form
+          </button>
+          <button type="submit" class="btn btn-primary" id="nlp-submit-btn">
+            🤖 Parse & Add
           </button>
         </div>
       </form>

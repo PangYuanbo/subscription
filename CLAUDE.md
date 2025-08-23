@@ -201,7 +201,113 @@ async def get_or_create_user(user_info: dict, db: AsyncSession):
     email = user_info.get("email")  # Optional
 ```
 
+### 数据库表结构管理 (Neon PostgreSQL)
+
+#### 数据库连接配置
+```env
+DATABASE_URL=postgresql+asyncpg://neondb_owner:npg_xxx@ep-xxx.c-2.us-east-2.aws.neon.tech/neondb?ssl=require
+```
+
+#### 表结构修改流程
+
+**⚠️ 重要：Neon数据库表结构修改步骤**
+
+1. **准备阶段**
+   ```bash
+   # 确保本地环境变量正确
+   cd backend/
+   # 检查当前数据库连接
+   python -c "from database import DATABASE_URL; print(DATABASE_URL)"
+   ```
+
+2. **清理旧数据（如需要）**
+   ```python
+   # 在Python中执行清理脚本
+   python -c "
+   import asyncio
+   from database import engine
+   from sqlalchemy import text
+
+   async def clear_database():
+       async with engine.begin() as conn:
+           # 按依赖顺序删除表
+           await conn.execute(text('DROP TABLE IF EXISTS subscriptions CASCADE;'))
+           await conn.execute(text('DROP TABLE IF EXISTS services CASCADE;'))
+           await conn.execute(text('DROP TABLE IF EXISTS users CASCADE;'))
+           print('所有表已删除')
+       await engine.dispose()
+
+   asyncio.run(clear_database())
+   "
+   ```
+
+3. **重新创建表结构**
+   ```python
+   # 使用当前models.py定义创建表
+   python -c "
+   import asyncio
+   from database import engine, Base
+
+   async def recreate_tables():
+       async with engine.begin() as conn:
+           await conn.run_sync(Base.metadata.create_all)
+           print('表结构已重新创建')
+       await engine.dispose()
+
+   asyncio.run(recreate_tables())
+   "
+   ```
+
+4. **验证表结构**
+   ```bash
+   # 启动应用验证
+   python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   # 测试API连接
+   curl http://localhost:8000/
+   ```
+
+#### 数据库性能优化配置
+
+**Neon数据库连接优化：**
+```python
+# database.py 配置
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=False,  # 关闭SQL日志提升性能
+    pool_size=5,  # 适应Neon连接限制
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=1800,  # 30分钟回收连接
+    connect_args={
+        "command_timeout": 5,
+        "server_settings": {
+            "application_name": "subscription_app",
+            "jit": "off"
+        }
+    }
+)
+```
+
+#### 常见数据库错误及解决方案
+
+1. **UUID vs Integer 类型冲突**
+   - **错误：** `operator does not exist: integer = uuid`
+   - **原因：** 表中存在整数ID，但模型期望UUID
+   - **解决：** 清理所有表并重新创建（见上述流程）
+
+2. **连接超时问题**
+   - **错误：** API响应缓慢或超时
+   - **解决：** 应用上述性能优化配置
+   - **跳过启动时表检查：** 在 `main.py` 中设置 `startup_event` 为 `pass`
+
+#### 数据库迁移最佳实践
+
+1. **开发环境：** 可以直接删除重建表
+2. **生产环境：** 使用Alembic进行增量迁移
+3. **表结构变更：** 优先修改models.py，然后执行上述重建流程
+4. **数据备份：** Neon提供自动备份，重要变更前可手动创建分支
+
 ---
 
-**最后更新：** 2025-08-19  
-**重要提醒：** 修改代码前先检查此文档，避免重复遇到已知问题
+**最后更新：** 2025-08-23  
+**重要提醒：** 修改Neon数据库表结构前，务必按照上述流程操作，避免数据类型冲突

@@ -205,13 +205,31 @@ function App() {
       const shouldUseApi = useApi && (isAuthenticated || !auth0Domain);
       
       if (shouldUseApi) {
+        // 乐观删除：先从UI中移除
+        const deletedSubscription = subscriptions.find(sub => sub.id === id);
+        const optimisticSubs = subscriptions.filter(sub => sub.id !== id);
+        
+        // 立即更新UI
+        setSubscriptions(optimisticSubs);
+        calculateAnalytics(optimisticSubs);
+        
+        // 后台API调用
         try {
           await authenticatedApi.subscriptions.delete(id);
-          await loadData();
+          // API成功后重新加载数据确保同步
+          setTimeout(() => loadData(), 100);
         } catch (error) {
           console.error('Failed to delete subscription', error);
+          // 出错时恢复删除的项目
+          if (deletedSubscription) {
+            const restoredSubs = [...subscriptions, deletedSubscription];
+            setSubscriptions(restoredSubs);
+            calculateAnalytics(restoredSubs);
+          }
+          alert('Failed to delete subscription. Please try again.');
         }
       } else {
+        // 本地存储模式保持原有逻辑
         const updatedSubs = subscriptions.filter(sub => sub.id !== id);
         setSubscriptions(updatedSubs);
         setUserData('subscriptions', updatedSubs);
@@ -224,18 +242,75 @@ function App() {
     const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
     const shouldUseApi = useApi && (isAuthenticated || !auth0Domain);
     
+    // 关闭表单和重置编辑状态
+    setIsFormOpen(false);
+    setEditingSubscription(null);
+    
     if (shouldUseApi) {
-      try {
-        if (editingSubscription) {
+      if (editingSubscription) {
+        // 编辑现有订阅 - 乐观更新
+        const optimisticSub: Subscription = {
+          ...subscriptionData,
+          id: editingSubscription.id
+        };
+        
+        const optimisticSubs = subscriptions.map(sub =>
+          sub.id === editingSubscription.id ? optimisticSub : sub
+        );
+        
+        // 立即更新UI
+        setSubscriptions(optimisticSubs);
+        calculateAnalytics(optimisticSubs);
+        
+        // 后台API调用
+        try {
           await authenticatedApi.subscriptions.update(editingSubscription.id, subscriptionData);
-        } else {
-          await authenticatedApi.subscriptions.create(subscriptionData);
+          // API成功后重新加载最新数据
+          await loadData();
+        } catch (error) {
+          console.error('Failed to update subscription', error);
+          // 出错时回滚到原始数据
+          await loadData();
+          alert('Failed to update subscription. Please try again.');
         }
-        await loadData();
-      } catch (error) {
-        console.error('Failed to save subscription', error);
+      } else {
+        // 添加新订阅 - 乐观更新
+        const tempId = `temp_${Date.now()}`;
+        const optimisticSub: Subscription = {
+          ...subscriptionData,
+          id: tempId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        const optimisticSubs = [...subscriptions, optimisticSub];
+        
+        // 立即更新UI
+        setSubscriptions(optimisticSubs);
+        calculateAnalytics(optimisticSubs);
+        
+        // 后台API调用
+        try {
+          const newSubscription = await authenticatedApi.subscriptions.create(subscriptionData);
+          // API成功后用真实数据替换临时数据
+          const finalSubs = optimisticSubs.map(sub => 
+            sub.id === tempId ? newSubscription : sub
+          );
+          setSubscriptions(finalSubs);
+          calculateAnalytics(finalSubs);
+          
+          // 然后重新加载所有数据确保同步
+          setTimeout(() => loadData(), 100);
+        } catch (error) {
+          console.error('Failed to create subscription', error);
+          // 出错时移除乐观添加的项目
+          setSubscriptions(subscriptions);
+          calculateAnalytics(subscriptions);
+          alert('Failed to create subscription. Please try again.');
+        }
       }
     } else {
+      // 本地存储模式保持原有逻辑
       let updatedSubs: Subscription[];
       if (editingSubscription) {
         updatedSubs = subscriptions.map(sub =>
@@ -254,8 +329,57 @@ function App() {
       setUserData('subscriptions', updatedSubs);
       calculateAnalytics(updatedSubs);
     }
-    setIsFormOpen(false);
-    setEditingSubscription(null);
+  };
+
+  const handleRenewSubscription = async (id: string) => {
+    const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
+    const shouldUseApi = useApi && (isAuthenticated || !auth0Domain);
+    
+    const subscription = subscriptions.find(sub => sub.id === id);
+    if (!subscription) return;
+    
+    const newPaymentDate = new Date(subscription.payment_date);
+    if (subscription.billing_cycle === 'yearly') {
+      newPaymentDate.setFullYear(newPaymentDate.getFullYear() + 1);
+    } else {
+      newPaymentDate.setMonth(newPaymentDate.getMonth() + 1);
+    }
+    
+    const updatedPaymentDate = newPaymentDate.toISOString().split('T')[0];
+    
+    // 乐观更新：立即更新UI
+    const optimisticSubs = subscriptions.map(sub => {
+      if (sub.id === id) {
+        return {
+          ...sub,
+          payment_date: updatedPaymentDate
+        };
+      }
+      return sub;
+    });
+    
+    setSubscriptions(optimisticSubs);
+    calculateAnalytics(optimisticSubs);
+    console.log('Subscription renewed successfully');
+    
+    if (shouldUseApi) {
+      // 后台API调用
+      try {
+        await authenticatedApi.subscriptions.update(id, {
+          payment_date: updatedPaymentDate
+        });
+        // API成功后重新加载数据确保同步
+        setTimeout(() => loadData(), 100);
+      } catch (error) {
+        console.error('Failed to renew subscription', error);
+        // 出错时回滚到原始数据
+        await loadData();
+        alert('Failed to renew subscription. Please try again.');
+      }
+    } else {
+      // 本地存储模式
+      setUserData('subscriptions', optimisticSubs);
+    }
   };
 
   const handleMonthlySpendingUpdate = (updatedData: MonthlySpending[]) => {
@@ -295,6 +419,7 @@ function App() {
                 onDelete={handleDeleteSubscription}
                 onAdd={handleAddSubscription}
                 onNLPAdd={(useApi && (isAuthenticated || !import.meta.env.VITE_AUTH0_DOMAIN)) ? handleNLPAddSubscription : undefined}
+                onRenew={handleRenewSubscription}
               />
               {analytics && <Analytics data={analytics} onMonthlySpendingUpdate={handleMonthlySpendingUpdate} />}
             </div>
@@ -307,6 +432,7 @@ function App() {
               onDelete={handleDeleteSubscription}
               onAdd={handleAddSubscription}
               onNLPAdd={useApi ? handleNLPAddSubscription : undefined}
+              onRenew={handleRenewSubscription}
             />
           )}
 
@@ -361,6 +487,7 @@ function App() {
         }}
         onSubmit={handleSubmitSubscription}
         subscription={editingSubscription}
+        existingSubscriptions={subscriptions}
       />
 
       <NLPSubscriptionForm

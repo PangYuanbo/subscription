@@ -12,11 +12,18 @@ if DATABASE_URL.startswith("postgres://"):
 
 engine = create_async_engine(
     DATABASE_URL, 
-    echo=True,
-    pool_size=20,
-    max_overflow=0,
+    echo=False,  # Disable SQL logging for better performance
+    pool_size=5,  # Reduce pool size for Neon's connection limits
+    max_overflow=10,
     pool_pre_ping=True,
-    pool_recycle=300
+    pool_recycle=1800,  # 30 minutes
+    connect_args={
+        "command_timeout": 5,
+        "server_settings": {
+            "application_name": "subscription_app",
+            "jit": "off"
+        }
+    }
 )
 
 AsyncSessionLocal = async_sessionmaker(
