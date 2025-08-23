@@ -52,9 +52,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
       <Card>
         <CardHeader>
           <CardTitle>Cost Breakdown by Category</CardTitle>
+          <CardDescription>
+            Monthly cost distribution across service categories
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 pb-0">
-          <ResponsiveContainer width="100%" height={300}>
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+          <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
                 data={validCategoryData}
@@ -70,6 +73,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
                 ))}
               </Pie>
               <Tooltip
+                cursor={false}
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
@@ -99,10 +103,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
                 iconSize={8}
                 wrapperStyle={{
                   paddingLeft: "20px",
-                  fontSize: "14px"
+                  fontSize: "12px"
                 }}
                 formatter={(value, entry) => (
-                  <span style={{ color: entry.color, fontSize: "12px" }}>
+                  <span style={{ color: entry.color }}>
                     {value}: ${Number(entry.payload.total).toFixed(2)}
                   </span>
                 )}
@@ -115,16 +119,60 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
       <Card>
         <CardHeader>
           <CardTitle>Monthly Spending Trend</CardTitle>
+          <CardDescription>
+            Comparison between projected and actual monthly spending
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={data.monthly_trend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis tickFormatter={(value) => `$${Number(value).toFixed(2)}`} />
-              <Tooltip formatter={(value, name) => [`$${Number(value).toFixed(2)}`, name === 'projected' ? 'Projected' : 'Actual']} />
-              <Bar dataKey="projected" fill="#3b82f6" name="Projected" />
-              <Bar dataKey="actual" fill="#10b981" name="Actual" />
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="month"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tickFormatter={(value) => `$${Number(value).toFixed(2)}`}
+              />
+              <Tooltip
+                cursor={{ fill: 'rgba(0, 0, 0, 0.1)' }}
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="rounded-lg border bg-background p-2 shadow-sm">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="flex flex-col">
+                            <span className="text-[0.70rem] uppercase text-muted-foreground">
+                              {label}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="grid gap-1">
+                          {payload.map((entry, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <div
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ backgroundColor: entry.color }}
+                              />
+                              <span className="text-sm font-medium">
+                                {entry.name === 'projected' ? 'Projected' : 'Actual'}: ${Number(entry.value).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Bar dataKey="projected" fill="#3b82f6" name="Projected" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="actual" fill="#10b981" name="Actual" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
