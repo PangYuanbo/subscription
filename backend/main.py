@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import jwt
 import httpx
@@ -121,14 +121,14 @@ async def get_or_create_user(user_info: dict, db: AsyncSession):
             name=user_info.get("name"),
             picture=user_info.get("picture"),
             nickname=user_info.get("nickname"),
-            last_login=datetime.utcnow()
+            last_login=datetime.now(timezone.utc)
         )
         db.add(user)
         await db.flush()
         await db.refresh(user)
     else:
         # Update last login
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(timezone.utc)
         await db.flush()
     
     return user
@@ -195,7 +195,7 @@ async def calculate_and_cache_analytics(user: User, db: AsyncSession):
     analytics.service_count = service_count
     analytics.category_breakdown = category_list
     analytics.monthly_trend = monthly_trend
-    analytics.last_calculated = datetime.utcnow()
+    analytics.last_calculated = datetime.now(timezone.utc)
     
     await db.flush()
     await db.refresh(analytics)
@@ -402,7 +402,7 @@ async def update_subscription(
     if subscription.trial_duration_days is not None:
         db_subscription.trial_duration_days = subscription.trial_duration_days
     
-    db_subscription.updated_at = datetime.utcnow()
+    db_subscription.updated_at = datetime.now(timezone.utc)
     
     await db.commit()
     await db.refresh(db_subscription)
@@ -494,7 +494,7 @@ async def get_analytics(
         force_refresh or 
         not analytics or 
         not analytics.last_calculated or
-        (datetime.utcnow() - analytics.last_calculated).total_seconds() > 3600  # Expires after 1 hour
+        (datetime.now(timezone.utc) - analytics.last_calculated).total_seconds() > 3600  # Expires after 1 hour
     )
     
     if should_refresh:
