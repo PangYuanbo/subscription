@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
   Cell,
   Tooltip,
+  Legend,
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import MonthlySpendingInput from './MonthlySpendingInput';
@@ -26,6 +27,9 @@ const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) => {
   const [timeRange, setTimeRange] = React.useState("12m");
+  
+  // Filter out categories with name "0" and prepare data for pie chart
+  const validCategoryData = data.category_breakdown.filter(item => item.category !== "0");
   
   const allProjectedData = Array.from({ length: 12 }, (_, i) => {
     const date = new Date(2024, i);
@@ -49,24 +53,60 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
         <CardHeader>
           <CardTitle>Cost Breakdown by Category</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
+        <CardContent className="flex-1 pb-0">
+          <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={data.category_breakdown}
-                cx="50%"
+                data={validCategoryData}
+                cx="40%"
                 cy="50%"
                 labelLine={false}
-                label={({ total }) => `$${total.toFixed(2)}`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="total"
               >
-                {data.category_breakdown.map((_, index) => (
+                {validCategoryData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div className="rounded-lg border bg-background p-2 shadow-sm">
+                        <div className="grid gap-1">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: payload[0].color }}
+                            />
+                            <span className="text-sm font-medium">
+                              {data.category}: ${Number(data.total).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Legend 
+                verticalAlign="middle" 
+                align="right" 
+                layout="vertical"
+                iconSize={8}
+                wrapperStyle={{
+                  paddingLeft: "20px",
+                  fontSize: "14px"
+                }}
+                formatter={(value, entry) => (
+                  <span style={{ color: entry.color, fontSize: "12px" }}>
+                    {value}: ${Number(entry.payload.total).toFixed(2)}
+                  </span>
+                )}
+              />
             </PieChart>
           </ResponsiveContainer>
         </CardContent>
@@ -81,8 +121,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
             <BarChart data={data.monthly_trend}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value, name) => [`$${value}`, name === 'projected' ? 'Projected' : 'Actual']} />
+              <YAxis tickFormatter={(value) => `$${Number(value).toFixed(2)}`} />
+              <Tooltip formatter={(value, name) => [`$${Number(value).toFixed(2)}`, name === 'projected' ? 'Projected' : 'Actual']} />
               <Bar dataKey="projected" fill="#3b82f6" name="Projected" />
               <Bar dataKey="actual" fill="#10b981" name="Actual" />
             </BarChart>
@@ -134,8 +174,39 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
               </defs>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-              <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-              <Tooltip />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `$${Number(value).toFixed(2)}`} />
+              <Tooltip
+                cursor={false}
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="rounded-lg border bg-background p-2 shadow-sm">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="flex flex-col">
+                            <span className="text-[0.70rem] uppercase text-muted-foreground">
+                              {label}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="grid gap-1">
+                          {payload.map((entry, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <div
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ backgroundColor: entry.color }}
+                              />
+                              <span className="text-sm font-medium">
+                                {entry.name}: ${Number(entry.value || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
               <Area
                 dataKey="projected"
                 type="natural"
