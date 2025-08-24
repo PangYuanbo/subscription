@@ -215,6 +215,15 @@ async def startup_event():
 async def root():
     return {"message": "Subscription Manager API", "status": "running"}
 
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "message": "API is running",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "version": "1.0.0"
+    }
+
 @app.get("/user/profile")
 async def get_user_profile(
     db: AsyncSession = Depends(get_db),

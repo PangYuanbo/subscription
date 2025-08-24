@@ -7,6 +7,7 @@ import Analytics from '@/components/Analytics';
 import TrialOverview from '@/components/TrialOverview';
 import ExpirationNotificationModal from '@/components/ExpirationNotificationModal';
 import { LoadingOverlay, LoadingSteps } from '@/components/ui/loading';
+import ApiDebugger from '@/components/ApiDebugger';
 import type { Subscription, Analytics as AnalyticsData, MonthlySpending } from '@/types';
 // import { subscriptionApi } from '@/api/client';
 import { useAuthenticatedApi } from '@/api/auth-client';
@@ -555,6 +556,9 @@ function App() {
                   <p>• Colors determined by service name, ensuring consistency</p>
                 </div>
               </div>
+
+              {/* API Diagnostics */}
+              <ApiDebugger />
             </div>
           )}
         </div>

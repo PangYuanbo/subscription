@@ -249,10 +249,13 @@ class ModalDeploymentTester:
                 )
     
     async def test_auth_endpoints(self):
-        """测试认证相关端点 (Mock模式)"""
+        """测试认证相关端点"""
         print_test("Authentication Endpoints Test")
         
-        # 测试无认证访问受保护端点 (应该使用mock用户)
+        # 首先测试认证检测
+        auth_config_test = await self.test_auth_configuration()
+        
+        # 测试无认证访问受保护端点
         endpoints = [
             "/user/profile",
             "/subscriptions", 
@@ -263,7 +266,7 @@ class ModalDeploymentTester:
             try:
                 response = await self.client.get(f"{self.base_url}{endpoint}")
                 
-                if response.status_code in [200, 401]:
+                if response.status_code in [200, 401, 403]:
                     if response.status_code == 200:
                         # Mock模式成功
                         self.record_test(
@@ -272,12 +275,20 @@ class ModalDeploymentTester:
                             "Mock authentication working",
                             {"status_code": response.status_code}
                         )
-                    else:
-                        # 真实Auth0模式
+                    elif response.status_code == 401:
+                        # 标准认证要求 (main.py模式)
                         self.record_test(
                             f"Auth Endpoint - {endpoint}",
                             True,
-                            "Auth0 authentication required (expected)",
+                            "Authentication required (401 - expected)",
+                            {"status_code": response.status_code}
+                        )
+                    elif response.status_code == 403:
+                        # HTTPBearer强制认证 (modal_app.py模式)
+                        self.record_test(
+                            f"Auth Endpoint - {endpoint}",
+                            True,
+                            "Authentication required (403 - HTTPBearer enforced)",
                             {"status_code": response.status_code}
                         )
                 else:
@@ -292,6 +303,61 @@ class ModalDeploymentTester:
                     False,
                     f"Error: {str(e)}"
                 )
+    
+    async def test_auth_configuration(self):
+        """测试认证配置状态"""
+        print_test("Authentication Configuration Detection")
+        
+        try:
+            # 尝试获取用户资料，看响应码来判断认证模式
+            response = await self.client.get(f"{self.base_url}/user/profile")
+            
+            if response.status_code == 200:
+                # Mock模式
+                data = response.json()
+                auth_mode = "Mock Mode"
+                self.record_test(
+                    "Auth Configuration",
+                    True,
+                    f"{auth_mode} - Mock user detected",
+                    {"mode": "mock", "user": data.get("auth0_user_id", "unknown")}
+                )
+                return "mock"
+            elif response.status_code == 401:
+                # Standard Auth0 with auto_error=False
+                auth_mode = "Auth0 Mode (Standard)"
+                self.record_test(
+                    "Auth Configuration",
+                    True,
+                    f"{auth_mode} - Authentication required",
+                    {"mode": "auth0_standard", "status_code": 401}
+                )
+                return "auth0_standard"
+            elif response.status_code == 403:
+                # HTTPBearer with auto_error=True (Modal default)
+                auth_mode = "Auth0 Mode (Strict)"
+                self.record_test(
+                    "Auth Configuration",
+                    True,
+                    f"{auth_mode} - HTTPBearer enforced",
+                    {"mode": "auth0_strict", "status_code": 403}
+                )
+                return "auth0_strict"
+            else:
+                self.record_test(
+                    "Auth Configuration",
+                    False,
+                    f"Unknown auth mode: HTTP {response.status_code}"
+                )
+                return "unknown"
+                
+        except Exception as e:
+            self.record_test(
+                "Auth Configuration",
+                False,
+                f"Auth detection failed: {str(e)}"
+            )
+            return "error"
     
     async def test_nlp_endpoint(self):
         """测试NLP端点"""
@@ -309,7 +375,7 @@ class ModalDeploymentTester:
                 headers={"Content-Type": "application/json"}
             )
             
-            if response.status_code in [200, 401]:
+            if response.status_code in [200, 401, 403]:
                 if response.status_code == 200:
                     data = response.json()
                     if "success" in data and "message" in data:
@@ -325,11 +391,18 @@ class ModalDeploymentTester:
                             False,
                             f"Invalid response format: {data}"
                         )
-                else:
+                elif response.status_code == 401:
                     self.record_test(
                         "NLP Text Parsing",
                         True,
-                        "Authentication required (expected for NLP)",
+                        "Authentication required (401 - expected for NLP)",
+                        {"status_code": response.status_code}
+                    )
+                elif response.status_code == 403:
+                    self.record_test(
+                        "NLP Text Parsing",
+                        True,
+                        "Authentication required (403 - HTTPBearer enforced)",
                         {"status_code": response.status_code}
                     )
             else:
@@ -367,8 +440,8 @@ class ModalDeploymentTester:
         print_header("3. Icon Fetch Functionality")
         await self.test_icon_fetch_functionality()
         
-        # 认证端点测试
-        print_header("4. Authentication Endpoints")
+        # 认证配置和端点测试
+        print_header("4. Authentication Configuration & Endpoints")
         await self.test_auth_endpoints()
         
         # NLP功能测试

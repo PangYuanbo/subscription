@@ -306,6 +306,16 @@ def fastapi_app():
     @fastapi_app.get("/")
     async def root():
         return {"message": "Subscription Manager API", "status": "running"}
+
+    @fastapi_app.get("/health")
+    async def health_check():
+        from datetime import datetime, timezone
+        return {
+            "status": "healthy",
+            "message": "API is running",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "version": "1.0.0"
+        }
     
     @fastapi_app.get("/user/profile")
     async def get_user_profile(

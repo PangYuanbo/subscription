@@ -1,0 +1,121 @@
+{
+  "summary": {
+    "total_tests": 12,
+    "successful_tests": 8,
+    "failed_tests": 4,
+    "success_rate": 66.66666666666666,
+    "test_time": "2025-08-24T10:13:19.011399"
+  },
+  "detailed_results": [
+    {
+      "test": "Basic Connectivity",
+      "success": true,
+      "message": "API responding: Subscription Manager API",
+      "details": {
+        "status_code": 200,
+        "response": {
+          "message": "Subscription Manager API",
+          "status": "running"
+        }
+      },
+      "timestamp": "2025-08-24T10:13:16.791217"
+    },
+    {
+      "test": "API Schema",
+      "success": true,
+      "message": "All required schemas present, ServiceResponse includes icon_source_url",
+      "details": {
+        "schema_count": 10
+      },
+      "timestamp": "2025-08-24T10:13:16.973208"
+    },
+    {
+      "test": "Icon Fetch URL Mode - netflix.com",
+      "success": true,
+      "message": "Successfully fetched icon URL",
+      "details": {
+        "url": "https://www.google.com/s2/favicons?domain=netflix.com&sz=128",
+        "source": "https://netflix.com"
+      },
+      "timestamp": "2025-08-24T10:13:17.262070"
+    },
+    {
+      "test": "Icon Fetch Base64 Mode - netflix.com",
+      "success": true,
+      "message": "Successfully fetched icon (url)",
+      "details": {
+        "type": "url",
+        "source": "https://netflix.com"
+      },
+      "timestamp": "2025-08-24T10:13:17.559991"
+    },
+    {
+      "test": "Icon Fetch URL Mode - spotify.com",
+      "success": true,
+      "message": "Successfully fetched icon URL",
+      "details": {
+        "url": "https://www.google.com/s2/favicons?domain=spotify.com&sz=128",
+        "source": "https://spotify.com"
+      },
+      "timestamp": "2025-08-24T10:13:17.775040"
+    },
+    {
+      "test": "Icon Fetch Base64 Mode - spotify.com",
+      "success": true,
+      "message": "Successfully fetched icon (url)",
+      "details": {
+        "type": "url",
+        "source": "https://spotify.com"
+      },
+      "timestamp": "2025-08-24T10:13:17.962522"
+    },
+    {
+      "test": "Icon Fetch URL Mode - github.com",
+      "success": true,
+      "message": "Successfully fetched icon URL",
+      "details": {
+        "url": "https://github.com/favicon.ico",
+        "source": "https://github.com"
+      },
+      "timestamp": "2025-08-24T10:13:18.199238"
+    },
+    {
+      "test": "Icon Fetch Base64 Mode - github.com",
+      "success": true,
+      "message": "Successfully fetched icon (base64)",
+      "details": {
+        "type": "base64",
+        "source": "https://github.com"
+      },
+      "timestamp": "2025-08-24T10:13:18.390692"
+    },
+    {
+      "test": "Auth Endpoint - /user/profile",
+      "success": false,
+      "message": "Unexpected status code: 403",
+      "details": {},
+      "timestamp": "2025-08-24T10:13:18.526113"
+    },
+    {
+      "test": "Auth Endpoint - /subscriptions",
+      "success": false,
+      "message": "Unexpected status code: 403",
+      "details": {},
+      "timestamp": "2025-08-24T10:13:18.673866"
+    },
+    {
+      "test": "Auth Endpoint - /analytics",
+      "success": false,
+      "message": "Unexpected status code: 403",
+      "details": {},
+      "timestamp": "2025-08-24T10:13:18.841215"
+    },
+    {
+      "test": "NLP Text Parsing",
+      "success": false,
+      "message": "Unexpected status code: 403",
+      "details": {},
+      "timestamp": "2025-08-24T10:13:19.010399"
+    }
+  ]
+}
