@@ -1,10 +1,10 @@
 {
   "summary": {
-    "total_tests": 12,
-    "successful_tests": 8,
-    "failed_tests": 4,
-    "success_rate": 66.66666666666666,
-    "test_time": "2025-08-24T10:13:19.011399"
+    "total_tests": 13,
+    "successful_tests": 13,
+    "failed_tests": 0,
+    "success_rate": 100.0,
+    "test_time": "2025-08-24T10:23:04.469698"
   },
   "detailed_results": [
     {
@@ -18,7 +18,7 @@
           "status": "running"
         }
       },
-      "timestamp": "2025-08-24T10:13:16.791217"
+      "timestamp": "2025-08-24T10:23:00.549865"
     },
     {
       "test": "API Schema",
@@ -27,7 +27,7 @@
       "details": {
         "schema_count": 10
       },
-      "timestamp": "2025-08-24T10:13:16.973208"
+      "timestamp": "2025-08-24T10:23:00.849716"
     },
     {
       "test": "Icon Fetch URL Mode - netflix.com",
@@ -37,7 +37,7 @@
         "url": "https://www.google.com/s2/favicons?domain=netflix.com&sz=128",
         "source": "https://netflix.com"
       },
-      "timestamp": "2025-08-24T10:13:17.262070"
+      "timestamp": "2025-08-24T10:23:01.347486"
     },
     {
       "test": "Icon Fetch Base64 Mode - netflix.com",
@@ -47,7 +47,7 @@
         "type": "url",
         "source": "https://netflix.com"
       },
-      "timestamp": "2025-08-24T10:13:17.559991"
+      "timestamp": "2025-08-24T10:23:01.830119"
     },
     {
       "test": "Icon Fetch URL Mode - spotify.com",
@@ -57,7 +57,7 @@
         "url": "https://www.google.com/s2/favicons?domain=spotify.com&sz=128",
         "source": "https://spotify.com"
       },
-      "timestamp": "2025-08-24T10:13:17.775040"
+      "timestamp": "2025-08-24T10:23:02.275428"
     },
     {
       "test": "Icon Fetch Base64 Mode - spotify.com",
@@ -67,7 +67,7 @@
         "type": "url",
         "source": "https://spotify.com"
       },
-      "timestamp": "2025-08-24T10:13:17.962522"
+      "timestamp": "2025-08-24T10:23:02.655663"
     },
     {
       "test": "Icon Fetch URL Mode - github.com",
@@ -77,7 +77,7 @@
         "url": "https://github.com/favicon.ico",
         "source": "https://github.com"
       },
-      "timestamp": "2025-08-24T10:13:18.199238"
+      "timestamp": "2025-08-24T10:23:03.034210"
     },
     {
       "test": "Icon Fetch Base64 Mode - github.com",
@@ -87,35 +87,53 @@
         "type": "base64",
         "source": "https://github.com"
       },
-      "timestamp": "2025-08-24T10:13:18.390692"
+      "timestamp": "2025-08-24T10:23:03.415707"
+    },
+    {
+      "test": "Auth Configuration",
+      "success": true,
+      "message": "Auth0 Mode (Strict) - HTTPBearer enforced",
+      "details": {
+        "mode": "auth0_strict",
+        "status_code": 403
+      },
+      "timestamp": "2025-08-24T10:23:03.678270"
     },
     {
       "test": "Auth Endpoint - /user/profile",
-      "success": false,
-      "message": "Unexpected status code: 403",
-      "details": {},
-      "timestamp": "2025-08-24T10:13:18.526113"
+      "success": true,
+      "message": "Authentication required (403 - HTTPBearer enforced)",
+      "details": {
+        "status_code": 403
+      },
+      "timestamp": "2025-08-24T10:23:03.864409"
     },
     {
       "test": "Auth Endpoint - /subscriptions",
-      "success": false,
-      "message": "Unexpected status code: 403",
-      "details": {},
-      "timestamp": "2025-08-24T10:13:18.673866"
+      "success": true,
+      "message": "Authentication required (403 - HTTPBearer enforced)",
+      "details": {
+        "status_code": 403
+      },
+      "timestamp": "2025-08-24T10:23:04.042159"
     },
     {
       "test": "Auth Endpoint - /analytics",
-      "success": false,
-      "message": "Unexpected status code: 403",
-      "details": {},
-      "timestamp": "2025-08-24T10:13:18.841215"
+      "success": true,
+      "message": "Authentication required (403 - HTTPBearer enforced)",
+      "details": {
+        "status_code": 403
+      },
+      "timestamp": "2025-08-24T10:23:04.219837"
     },
     {
       "test": "NLP Text Parsing",
-      "success": false,
-      "message": "Unexpected status code: 403",
-      "details": {},
-      "timestamp": "2025-08-24T10:13:19.010399"
+      "success": true,
+      "message": "Authentication required (403 - HTTPBearer enforced)",
+      "details": {
+        "status_code": 403
+      },
+      "timestamp": "2025-08-24T10:23:04.469698"
     }
   ]
 }
