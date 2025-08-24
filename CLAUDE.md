@@ -117,6 +117,21 @@ modal.Secret.from_name("auth0-config")  # AUTH0_DOMAIN, AUTH0_AUDIENCE
 
 ## 调试和故障排除
 
+### Windows开发环境常见问题
+
+#### lucide-react chrome.js 被Windows Defender误报
+**问题：** Windows Defender将lucide-react包的chrome.js文件误报为病毒
+**错误信息：** `Could not resolve "./icons/chrome.js"`
+**解决方案：**
+1. 手动创建dummy chrome.js文件：
+```bash
+echo "const Chrome = () => null; Chrome.displayName = 'Chrome'; export default Chrome;" > node_modules/lucide-react/dist/esm/icons/chrome.js
+```
+2. 清除vite缓存：`rm -rf node_modules/.vite`
+3. 安装缺失的react-is依赖：`npm install react-is`
+
+## 调试和故障排除
+
 ### 白屏问题快速排查
 1. 打开浏览器开发者工具查看控制台错误
 2. 检查是否有模块导入失败的错误

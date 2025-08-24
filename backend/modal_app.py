@@ -84,7 +84,8 @@ def fastapi_app():
         
         id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
         name = Column(String, nullable=False)
-        icon_url = Column(String)
+        icon_url = Column(String)  # Can be base64 data URL or external URL
+        icon_source_url = Column(String)  # Original website URL where icon was fetched from
         category = Column(String, nullable=False)
         created_at = Column(DateTime, default=func.now())
         updated_at = Column(DateTime)
@@ -118,11 +119,13 @@ def fastapi_app():
         id: str
         name: str
         icon_url: Optional[str]
+        icon_source_url: Optional[str]
         category: str
     
     class ServiceBase(BaseModel):
         name: str
         icon_url: Optional[str] = None
+        icon_source_url: Optional[str] = None
         category: str
     
     class SubscriptionResponse(BaseModel):
@@ -365,6 +368,7 @@ def fastapi_app():
                     id=str(service.id),
                     name=service.name,
                     icon_url=service.icon_url,
+                    icon_source_url=service.icon_source_url,
                     category=service.category
                 ) if service else None
             )
@@ -393,6 +397,7 @@ def fastapi_app():
             service = Service(
                 name=subscription.service.name if subscription.service else "Unknown",
                 icon_url=subscription.service.icon_url if subscription.service else "",
+                icon_source_url=subscription.service.icon_source_url if subscription.service else None,
                 category=subscription.service.category if subscription.service else "Other"
             )
             db.add(service)
@@ -704,6 +709,7 @@ def fastapi_app():
                 service = Service(
                     name=parsed_data["service_name"],
                     icon_url="",
+                    icon_source_url=None,
                     category=parsed_data["service_category"]
                 )
                 db.add(service)
@@ -775,8 +781,13 @@ def fastapi_app():
             )
     
     @fastapi_app.get("/fetch-icon")
-    async def fetch_website_icon(url: str):
-        """Fetch favicon from a website URL"""
+    async def fetch_website_icon(url: str, return_url_only: bool = False):
+        """Fetch favicon from a website URL
+        
+        Args:
+            url: Website URL to fetch icon from
+            return_url_only: If True, return the icon URL instead of base64 data
+        """
         try:
             # Parse and validate URL
             if not url.startswith('http'):
@@ -796,31 +807,59 @@ def fastapi_app():
                 f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
             ]
             
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                for favicon_url in favicon_urls:
-                    try:
-                        response = await client.get(favicon_url)
-                        if response.status_code == 200 and len(response.content) > 0:
-                            # Check if it's actually an image
-                            content_type = response.headers.get('content-type', '')
-                            if content_type.startswith('image/'):
-                                # Convert to base64 for frontend
-                                image_data = base64.b64encode(response.content).decode('utf-8')
+            if return_url_only:
+                # Just return the URL that works
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    for favicon_url in favicon_urls:
+                        try:
+                            response = await client.head(favicon_url)
+                            if response.status_code == 200:
                                 return {
                                     "success": True,
-                                    "icon_url": f"data:{content_type};base64,{image_data}",
+                                    "icon_url": favicon_url,
+                                    "icon_source_url": url,
                                     "domain": domain
                                 }
-                    except Exception:
-                        continue
-            
-            # If all attempts fail, return Google's favicon service as fallback
-            fallback_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
-            return {
-                "success": True,
-                "icon_url": fallback_url,
-                "domain": domain
-            }
+                        except Exception:
+                            continue
+                
+                # Return Google's favicon service as fallback
+                fallback_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+                return {
+                    "success": True,
+                    "icon_url": fallback_url,
+                    "icon_source_url": url,
+                    "domain": domain
+                }
+            else:
+                # Return base64 data (backward compatibility)
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    for favicon_url in favicon_urls:
+                        try:
+                            response = await client.get(favicon_url)
+                            if response.status_code == 200 and len(response.content) > 0:
+                                # Check if it's actually an image
+                                content_type = response.headers.get('content-type', '')
+                                if content_type.startswith('image/'):
+                                    # Convert to base64 for frontend
+                                    image_data = base64.b64encode(response.content).decode('utf-8')
+                                    return {
+                                        "success": True,
+                                        "icon_url": f"data:{content_type};base64,{image_data}",
+                                        "icon_source_url": url,
+                                        "domain": domain
+                                    }
+                        except Exception:
+                            continue
+                
+                # If all attempts fail, return Google's favicon service as fallback
+                fallback_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+                return {
+                    "success": True,
+                    "icon_url": fallback_url,
+                    "icon_source_url": url,
+                    "domain": domain
+                }
             
         except Exception as e:
             print(f"Error fetching icon: {e}")

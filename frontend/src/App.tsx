@@ -155,7 +155,7 @@ function App() {
     const lastShownTime = localStorage.getItem(lastShownKey);
     const lastShownTimestamp = lastShownTime ? parseInt(lastShownTime) : undefined;
     
-    if (shouldShowExpirationNotifications(expiringSubscriptions, lastShownTimestamp)) {
+    if (shouldShowExpirationNotifications(expiringSubscriptions, lastShownTimestamp) && !hasShownExpirationToday) {
       // Small delay to ensure UI has rendered
       setTimeout(() => {
         setShowExpirationModal(true);

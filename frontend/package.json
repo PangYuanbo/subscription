@@ -22,9 +22,10 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.12",
-    "lucide-react": "^0.539.0",
+    "lucide-react": "^0.541.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-is": "^19.1.1",
     "react-router-dom": "^7.8.1",
     "recharts": "^3.1.2",
     "tailwind-merge": "^3.3.1"

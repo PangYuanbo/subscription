@@ -32,7 +32,8 @@ class Service(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
-    icon_url = Column(String)
+    icon_url = Column(String)  # Can be base64 data URL or external URL
+    icon_source_url = Column(String)  # Original website URL where icon was fetched from
     category = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

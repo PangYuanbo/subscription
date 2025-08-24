@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MessageSquare, Loader2, CheckCircle, XCircle, Upload, Image as ImageIcon } from 'lucide-react';
+import { X, MessageSquare, Loader2, CheckCircle, XCircle, Upload } from 'lucide-react';
 import { useAuthenticatedApi } from '@/api/auth-client';
 
 interface NLPSubscriptionFormProps {

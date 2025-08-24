@@ -277,6 +277,7 @@ async def get_subscriptions(
                 id=str(service.id),
                 name=service.name,
                 icon_url=service.icon_url,
+                icon_source_url=service.icon_source_url if hasattr(service, 'icon_source_url') else None,
                 category=service.category
             ) if service else None
         )
@@ -307,6 +308,7 @@ async def create_subscription(
         service = Service(
             name=subscription.service.name,
             icon_url=subscription.service.icon_url if subscription.service.icon_url else "",
+            icon_source_url=subscription.service.icon_source_url if hasattr(subscription.service, 'icon_source_url') and subscription.service.icon_source_url else None,
             category=subscription.service.category
         )
         db.add(service)
@@ -743,8 +745,13 @@ async def create_subscription_from_nlp_multimodal(
         )
 
 @app.get("/fetch-icon")
-async def fetch_website_icon(url: str):
-    """Fetch favicon from a website URL"""
+async def fetch_website_icon(url: str, return_url_only: bool = False):
+    """Fetch favicon from a website URL
+    
+    Args:
+        url: Website URL to fetch icon from
+        return_url_only: If True, return the icon URL instead of base64 data
+    """
     try:
         # Parse and validate URL
         if not url.startswith('http'):
@@ -764,31 +771,59 @@ async def fetch_website_icon(url: str):
             f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
         ]
         
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            for favicon_url in favicon_urls:
-                try:
-                    response = await client.get(favicon_url)
-                    if response.status_code == 200 and len(response.content) > 0:
-                        # Check if it's actually an image
-                        content_type = response.headers.get('content-type', '')
-                        if content_type.startswith('image/'):
-                            # Convert to base64 for frontend
-                            image_data = base64.b64encode(response.content).decode('utf-8')
+        if return_url_only:
+            # Just return the URL that works
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                for favicon_url in favicon_urls:
+                    try:
+                        response = await client.head(favicon_url)
+                        if response.status_code == 200:
                             return {
                                 "success": True,
-                                "icon_url": f"data:{content_type};base64,{image_data}",
+                                "icon_url": favicon_url,
+                                "icon_source_url": url,
                                 "domain": domain
                             }
-                except Exception:
-                    continue
-        
-        # If all attempts fail, return Google's favicon service as fallback
-        fallback_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
-        return {
-            "success": True,
-            "icon_url": fallback_url,
-            "domain": domain
-        }
+                    except Exception:
+                        continue
+            
+            # Return Google's favicon service as fallback
+            fallback_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+            return {
+                "success": True,
+                "icon_url": fallback_url,
+                "icon_source_url": url,
+                "domain": domain
+            }
+        else:
+            # Return base64 data (backward compatibility)
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                for favicon_url in favicon_urls:
+                    try:
+                        response = await client.get(favicon_url)
+                        if response.status_code == 200 and len(response.content) > 0:
+                            # Check if it's actually an image
+                            content_type = response.headers.get('content-type', '')
+                            if content_type.startswith('image/'):
+                                # Convert to base64 for frontend
+                                image_data = base64.b64encode(response.content).decode('utf-8')
+                                return {
+                                    "success": True,
+                                    "icon_url": f"data:{content_type};base64,{image_data}",
+                                    "icon_source_url": url,
+                                    "domain": domain
+                                }
+                    except Exception:
+                        continue
+            
+            # If all attempts fail, return Google's favicon service as fallback
+            fallback_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+            return {
+                "success": True,
+                "icon_url": fallback_url,
+                "icon_source_url": url,
+                "domain": domain
+            }
         
     except Exception as e:
         print(f"Error fetching icon: {e}")

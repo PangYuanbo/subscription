@@ -47,6 +47,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
   const [selectedService, setSelectedService] = useState<ServiceData | null>(null);
   const [customServiceName, setCustomServiceName] = useState('');
   const [customIconUrl, setCustomIconUrl] = useState('');
+  const [customIconSourceUrl, setCustomIconSourceUrl] = useState('');
 
   useEffect(() => {
     if (subscription) {
@@ -133,6 +134,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         name: customServiceName.trim(),
         category: 'Other',
         icon_url: customIconUrl || undefined,
+        icon_source_url: customIconSourceUrl || undefined,
       };
     } else {
       service = selectedService || PREDEFINED_SERVICES.find(s => s.id === formData.service_id);
@@ -204,7 +206,11 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
                 <div className="col-span-3">
                   <IconUpload
                     value={customIconUrl}
-                    onChange={setCustomIconUrl}
+                    sourceUrl={customIconSourceUrl}
+                    onChange={(iconUrl, sourceUrl) => {
+                      setCustomIconUrl(iconUrl);
+                      setCustomIconSourceUrl(sourceUrl || '');
+                    }}
                   />
                 </div>
               </div>

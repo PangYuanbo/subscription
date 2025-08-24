@@ -157,7 +157,7 @@ const ExpirationNotificationModal: React.FC<ExpirationNotificationModalProps> = 
               <div className="p-6 max-h-96 overflow-y-auto">
                 <div className="space-y-4">
                   {sortedSubscriptions.map((subscription) => {
-                    const styles = getUrgencyStyles(subscription.expInfo.urgencyLevel);
+                    const styles = getUrgencyStyles(subscription.expInfo.urgencyLevel as 'critical' | 'high' | 'medium');
                     
                     return (
                       <motion.div

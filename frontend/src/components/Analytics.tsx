@@ -41,7 +41,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
     };
   });
   
-  const filteredData = allProjectedData.filter((item, index) => {
+  const filteredData = allProjectedData.filter((_, index) => {
     if (timeRange === "3m") return index >= 9;
     if (timeRange === "6m") return index >= 6;
     return true;
@@ -213,11 +213,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
                   fontSize: "13px",
                   fontWeight: "500"
                 }}
-                formatter={(value, entry) => {
-                  const percentage = ((entry.payload.total / validCategoryData.reduce((sum, item) => sum + item.total, 0)) * 100).toFixed(0);
+                formatter={(_, entry) => {
+                  if (!entry?.payload) return '';
+                  const payload = entry.payload as any;
+                  const percentage = ((payload.total / validCategoryData.reduce((sum, item) => sum + item.total, 0)) * 100).toFixed(0);
                   return (
                     <span style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span>{entry.payload.category}</span>
+                      <span>{payload.category}</span>
                       <span style={{ fontSize: '11px', color: '#64748b' }}>({percentage}%)</span>
                     </span>
                   );
@@ -390,19 +392,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ data, onMonthlySpendingUpdate }) 
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wide">Avg Monthly</p>
                 <p className="text-lg font-bold text-slate-800">
-                  ${(data.monthly_trend.reduce((sum, item) => sum + (item.actual || item.total || 0), 0) / data.monthly_trend.length).toFixed(0)}
+                  ${(data.monthly_trend.reduce((sum, item) => sum + (item.actual || item.projected || 0), 0) / data.monthly_trend.length).toFixed(0)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wide">Highest</p>
                 <p className="text-lg font-bold text-emerald-600">
-                  ${Math.max(...data.monthly_trend.map(item => item.actual || item.total || 0)).toFixed(0)}
+                  ${Math.max(...data.monthly_trend.map(item => item.actual || item.projected || 0)).toFixed(0)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wide">Lowest</p>
                 <p className="text-lg font-bold text-blue-600">
-                  ${Math.min(...data.monthly_trend.map(item => item.actual || item.total || 0)).toFixed(0)}
+                  ${Math.min(...data.monthly_trend.map(item => item.actual || item.projected || 0)).toFixed(0)}
                 </p>
               </div>
               <div>

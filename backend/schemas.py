@@ -37,6 +37,7 @@ class UserResponse(UserBase):
 class ServiceBase(BaseModel):
     name: str
     icon_url: Optional[str] = None
+    icon_source_url: Optional[str] = None  # URL where icon was fetched from
     category: str
 
 class ServiceCreate(ServiceBase):
