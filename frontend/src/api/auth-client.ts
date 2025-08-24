@@ -3,21 +3,21 @@ import type { AxiosInstance } from 'axios';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useEffect, useState, useMemo } from 'react';
 import type { Subscription, Analytics } from '@/types';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { getApiConfig } from '@/config/api';
 
 export const createAuthenticatedApi = (accessToken?: string): AxiosInstance => {
+  const config = getApiConfig();
   const api = axios.create({
-    baseURL: API_BASE_URL,
+    ...config,
     headers: {
-      'Content-Type': 'application/json',
+      ...config.headers,
       ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
     },
   });
 
   // Debug: verify the API instance has the required methods
   console.log('Created API instance:', { 
-    baseURL: api.defaults.baseURL, 
+    baseURL: config.baseURL, 
     hasPost: typeof api.post === 'function',
     hasGet: typeof api.get === 'function',
     hasToken: !!accessToken,
