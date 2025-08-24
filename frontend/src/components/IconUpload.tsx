@@ -275,8 +275,7 @@ const IconUpload: React.FC<IconUploadProps> = ({ value, sourceUrl, onChange, dis
                 src={value}
                 alt="Service icon preview"
                 className="w-8 h-8 rounded object-cover"
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement;
+                onError={() => {
                   // If it's a URL and fails to load, try fetching it dynamically
                   if (!value.startsWith('data:') && sourceUrl) {
                     setError('Icon failed to load, try fetching again');
