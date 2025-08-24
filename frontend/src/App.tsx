@@ -5,11 +5,13 @@ import SubscriptionForm from '@/components/SubscriptionForm';
 import NLPSubscriptionForm from '@/components/NLPSubscriptionForm';
 import Analytics from '@/components/Analytics';
 import TrialOverview from '@/components/TrialOverview';
+import ExpirationNotificationModal from '@/components/ExpirationNotificationModal';
 import type { Subscription, Analytics as AnalyticsData, MonthlySpending } from '@/types';
 // import { subscriptionApi } from '@/api/client';
 import { useAuthenticatedApi } from '@/api/auth-client';
 import { useUserData } from '@/hooks/useUserData';
 import { useAuth0 } from '@auth0/auth0-react';
+import { findExpiringSubscriptions, shouldShowExpirationNotifications } from '@/utils/expirationUtils';
 
 const MOCK_SUBSCRIPTIONS: Subscription[] = [
   {
@@ -84,6 +86,8 @@ function App() {
   const [isNLPFormOpen, setIsNLPFormOpen] = useState(false);
   const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
   const [useApi, setUseApi] = useState(true);
+  const [showExpirationModal, setShowExpirationModal] = useState(false);
+  const [hasShownExpirationToday, setHasShownExpirationToday] = useState(false);
   const { getUserData, setUserData } = useUserData();
   const { isAuthenticated, isLoading } = useAuth0();
   const authenticatedApi = useAuthenticatedApi();
@@ -115,6 +119,9 @@ function App() {
         ]);
         setSubscriptions(subs);
         setAnalytics(analyticsData);
+        
+        // Check for expiring subscriptions after loading data
+        checkExpiringSubscriptions(subs);
       } catch (error) {
         console.error('Failed to load data from API, using mock data', error);
         loadMockData();
@@ -126,13 +133,36 @@ function App() {
 
   const loadMockData = () => {
     const storedSubs = getUserData('subscriptions');
+    const subsToUse = storedSubs ? JSON.parse(storedSubs) : MOCK_SUBSCRIPTIONS;
     if (storedSubs) {
-      setSubscriptions(JSON.parse(storedSubs));
+      setSubscriptions(subsToUse);
     } else {
       setSubscriptions(MOCK_SUBSCRIPTIONS);
       setUserData('subscriptions', MOCK_SUBSCRIPTIONS);
     }
-    calculateAnalytics(storedSubs ? JSON.parse(storedSubs) : MOCK_SUBSCRIPTIONS);
+    calculateAnalytics(subsToUse);
+    
+    // Check for expiring subscriptions after loading mock data
+    checkExpiringSubscriptions(subsToUse);
+  };
+
+  // Check for expiring subscriptions and show modal if needed
+  const checkExpiringSubscriptions = (subs: Subscription[]) => {
+    const expiringSubscriptions = findExpiringSubscriptions(subs, 7); // Check 7 days ahead
+    
+    // Get last shown timestamp from localStorage
+    const lastShownKey = 'expiration-modal-last-shown';
+    const lastShownTime = localStorage.getItem(lastShownKey);
+    const lastShownTimestamp = lastShownTime ? parseInt(lastShownTime) : undefined;
+    
+    if (shouldShowExpirationNotifications(expiringSubscriptions, lastShownTimestamp)) {
+      // Small delay to ensure UI has rendered
+      setTimeout(() => {
+        setShowExpirationModal(true);
+        setHasShownExpirationToday(true);
+        localStorage.setItem(lastShownKey, Date.now().toString());
+      }, 1500);
+    }
   };
 
   const calculateAnalytics = (subs: Subscription[]) => {
@@ -494,6 +524,13 @@ function App() {
         isOpen={isNLPFormOpen}
         onClose={() => setIsNLPFormOpen(false)}
         onSuccess={handleNLPSuccess}
+      />
+
+      <ExpirationNotificationModal
+        isOpen={showExpirationModal}
+        onClose={() => setShowExpirationModal(false)}
+        expiringSubscriptions={findExpiringSubscriptions(subscriptions, 7)}
+        onRenewSubscription={handleRenewSubscription}
       />
     </div>
   );

@@ -5,7 +5,7 @@ export interface Service {
   category: string;
 }
 
-export type BillingCycle = 'monthly' | 'yearly';
+export type BillingCycle = 'weekly' | 'monthly' | 'yearly';
 
 export interface Subscription {
   id: string;
@@ -14,7 +14,7 @@ export interface Subscription {
   account: string;
   payment_date: string;
   cost: number; // Original price, may be monthly or yearly fee
-  billing_cycle: BillingCycle; // Billing cycle: monthly or yearly fee
+  billing_cycle: BillingCycle; // Billing cycle: weekly, monthly or yearly fee
   monthly_cost: number; // Calculated monthly cost for statistics
   created_at?: string;
   updated_at?: string;
@@ -23,6 +23,8 @@ export interface Subscription {
   trial_end_date?: string;
   trial_duration_days?: number;
   is_trial?: boolean;
+  // Auto-renewal settings
+  auto_pay?: boolean; // Whether the subscription automatically renews
 }
 
 export interface MonthlySpending {

@@ -25,11 +25,13 @@ def fastapi_app():
     import uuid
     from pydantic import BaseModel
     from typing import List, Optional
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from enum import Enum
     import os
     import jwt
     import httpx
+    import base64
+    from urllib.parse import urlparse
     from functools import wraps
     
     # Auth0 Configuration
@@ -102,11 +104,13 @@ def fastapi_app():
         trial_start_date = Column(DateTime, nullable=True)
         trial_end_date = Column(DateTime, nullable=True)
         trial_duration_days = Column(Integer, default=0)
+        auto_pay = Column(Boolean, default=False)
         created_at = Column(DateTime, default=func.now())
         updated_at = Column(DateTime)
     
     # Schemas
     class BillingCycle(str, Enum):
+        weekly = "weekly"
         monthly = "monthly"
         yearly = "yearly"
     
@@ -133,6 +137,7 @@ def fastapi_app():
         trial_start_date: Optional[str]
         trial_end_date: Optional[str]
         trial_duration_days: Optional[int]
+        auto_pay: Optional[bool]
         created_at: Optional[str]
         updated_at: Optional[str]
         service: Optional[ServiceResponse]
@@ -148,6 +153,7 @@ def fastapi_app():
         trial_start_date: Optional[str] = None
         trial_end_date: Optional[str] = None
         trial_duration_days: Optional[int] = 0
+        auto_pay: Optional[bool] = False
         service: Optional[ServiceBase] = None
     
     class SubscriptionUpdate(BaseModel):
@@ -160,6 +166,7 @@ def fastapi_app():
         trial_start_date: Optional[str] = None
         trial_end_date: Optional[str] = None
         trial_duration_days: Optional[int] = None
+        auto_pay: Optional[bool] = None
     
     class AnalyticsResponse(BaseModel):
         total_monthly_cost: float
@@ -254,14 +261,14 @@ def fastapi_app():
                 name=user_info.get("name"),
                 picture=user_info.get("picture"),
                 nickname=user_info.get("nickname"),
-                last_login=datetime.utcnow()
+                last_login=datetime.now(timezone.utc)
             )
             db.add(user)
             await db.flush()
             await db.refresh(user)
         else:
             # Update last login
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now(timezone.utc)
             await db.flush()
         
         return user
@@ -351,6 +358,7 @@ def fastapi_app():
                 trial_start_date=sub.trial_start_date.isoformat() if sub.trial_start_date else None,
                 trial_end_date=sub.trial_end_date.isoformat() if sub.trial_end_date else None,
                 trial_duration_days=sub.trial_duration_days,
+                auto_pay=sub.auto_pay,
                 created_at=sub.created_at.isoformat() if sub.created_at else None,
                 updated_at=sub.updated_at.isoformat() if sub.updated_at else None,
                 service=ServiceResponse(
@@ -402,7 +410,8 @@ def fastapi_app():
             is_trial=subscription.is_trial,
             trial_start_date=datetime.fromisoformat(subscription.trial_start_date) if subscription.trial_start_date else None,
             trial_end_date=datetime.fromisoformat(subscription.trial_end_date) if subscription.trial_end_date else None,
-            trial_duration_days=subscription.trial_duration_days
+            trial_duration_days=subscription.trial_duration_days,
+            auto_pay=subscription.auto_pay
         )
         
         db.add(db_subscription)
@@ -421,6 +430,7 @@ def fastapi_app():
             trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
             trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
             trial_duration_days=db_subscription.trial_duration_days,
+            auto_pay=db_subscription.auto_pay,
             created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
             updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
             service=ServiceResponse(
@@ -470,8 +480,10 @@ def fastapi_app():
             db_subscription.trial_end_date = datetime.fromisoformat(subscription.trial_end_date) if subscription.trial_end_date else None
         if subscription.trial_duration_days is not None:
             db_subscription.trial_duration_days = subscription.trial_duration_days
+        if subscription.auto_pay is not None:
+            db_subscription.auto_pay = subscription.auto_pay
         
-        db_subscription.updated_at = datetime.utcnow()
+        db_subscription.updated_at = datetime.now(timezone.utc)
         
         await db.commit()
         await db.refresh(db_subscription)
@@ -493,6 +505,7 @@ def fastapi_app():
             trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
             trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
             trial_duration_days=db_subscription.trial_duration_days,
+            auto_pay=db_subscription.auto_pay,
             created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
             updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
             service=ServiceResponse(
@@ -735,6 +748,7 @@ def fastapi_app():
                 trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
                 trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
                 trial_duration_days=db_subscription.trial_duration_days,
+                auto_pay=db_subscription.auto_pay,
                 created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
                 updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
                 service=ServiceResponse(
@@ -759,5 +773,57 @@ def fastapi_app():
                 message=f"Error processing request: {str(e)}",
                 parsed_data=None
             )
+    
+    @fastapi_app.get("/fetch-icon")
+    async def fetch_website_icon(url: str):
+        """Fetch favicon from a website URL"""
+        try:
+            # Parse and validate URL
+            if not url.startswith('http'):
+                url = f"https://{url}"
+            
+            parsed_url = urlparse(url)
+            domain = parsed_url.netloc
+            
+            if not domain:
+                raise HTTPException(status_code=400, detail="Invalid URL")
+            
+            # Try different favicon URLs
+            favicon_urls = [
+                f"https://{domain}/favicon.ico",
+                f"https://{domain}/favicon.png", 
+                f"https://{domain}/apple-touch-icon.png",
+                f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+            ]
+            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                for favicon_url in favicon_urls:
+                    try:
+                        response = await client.get(favicon_url)
+                        if response.status_code == 200 and len(response.content) > 0:
+                            # Check if it's actually an image
+                            content_type = response.headers.get('content-type', '')
+                            if content_type.startswith('image/'):
+                                # Convert to base64 for frontend
+                                image_data = base64.b64encode(response.content).decode('utf-8')
+                                return {
+                                    "success": True,
+                                    "icon_url": f"data:{content_type};base64,{image_data}",
+                                    "domain": domain
+                                }
+                    except Exception:
+                        continue
+            
+            # If all attempts fail, return Google's favicon service as fallback
+            fallback_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+            return {
+                "success": True,
+                "icon_url": fallback_url,
+                "domain": domain
+            }
+            
+        except Exception as e:
+            print(f"Error fetching icon: {e}")
+            raise HTTPException(status_code=500, detail="Failed to fetch icon")
     
     return fastapi_app

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { differenceInDays, addMonths, addYears } from 'date-fns';
+import { differenceInDays, addMonths, addYears, addWeeks } from 'date-fns';
 import { motion } from 'framer-motion';
 import type { Subscription } from '@/types';
 
@@ -22,6 +22,8 @@ const RenewalProgress: React.FC<RenewalProgressProps> = ({ subscription }) => {
       let nextRenewalDate: Date;
       if (subscription.billing_cycle === 'yearly') {
         nextRenewalDate = addYears(paymentDate, 1);
+      } else if (subscription.billing_cycle === 'weekly') {
+        nextRenewalDate = addWeeks(paymentDate, 1);
       } else {
         nextRenewalDate = addMonths(paymentDate, 1);
       }
@@ -112,7 +114,8 @@ const RenewalProgress: React.FC<RenewalProgressProps> = ({ subscription }) => {
       </motion.div>
       <div className="mt-1 flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          {subscription.billing_cycle === 'yearly' ? 'Annual' : 'Monthly'} renewal
+          {subscription.billing_cycle === 'yearly' ? 'Annual' : 
+           subscription.billing_cycle === 'weekly' ? 'Weekly' : 'Monthly'} renewal
         </span>
         {daysUntilRenewal <= 7 && (
           <motion.span 

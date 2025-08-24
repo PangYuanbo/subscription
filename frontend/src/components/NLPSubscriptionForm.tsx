@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MessageSquare, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { X, MessageSquare, Loader2, CheckCircle, XCircle, Upload, Image as ImageIcon } from 'lucide-react';
 import { useAuthenticatedApi } from '@/api/auth-client';
 
 interface NLPSubscriptionFormProps {
@@ -17,19 +17,51 @@ interface NLPResponse {
 
 export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPSubscriptionFormProps) {
   const [inputText, setInputText] = useState('');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<NLPResponse | null>(null);
   const authenticatedApi = useAuthenticatedApi();
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() && !selectedImage) return;
 
     setIsLoading(true);
     setResponse(null);
 
     try {
-      const nlpResponse = await authenticatedApi.subscriptions.parseNLP(inputText);
+      let nlpResponse;
+      if (selectedImage) {
+        // Convert image to base64 for multimodal parsing
+        const reader = new FileReader();
+        const imageBase64 = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(selectedImage);
+        });
+        
+        nlpResponse = await authenticatedApi.subscriptions.parseNLPWithImage(inputText || '', imageBase64);
+      } else {
+        nlpResponse = await authenticatedApi.subscriptions.parseNLP(inputText);
+      }
+      
       setResponse(nlpResponse);
 
       if (nlpResponse.success) {
@@ -51,6 +83,8 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
 
   const handleClose = () => {
     setInputText('');
+    setSelectedImage(null);
+    setImagePreview(null);
     setResponse(null);
     onClose();
   };
@@ -76,18 +110,57 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Describe Your Subscription
+              Describe Your Subscription or Upload Image
             </label>
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="For example: I want to add Netflix subscription, $19.99 per month, next payment is on the 15th, account is family@example.com"
-              className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               disabled={isLoading}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Please describe service name, cost, payment date and account information in as much detail as possible
+              Describe your subscription or upload a screenshot/image of your subscription details
             </p>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Upload Image (Optional)
+            </label>
+            {!imagePreview ? (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                  disabled={isLoading}
+                />
+                <label htmlFor="image-upload" className="cursor-pointer">
+                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Click to upload an image</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG up to 10MB</p>
+                </label>
+              </div>
+            ) : (
+              <div className="relative border border-gray-300 rounded-lg p-2">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="max-h-32 mx-auto rounded"
+                />
+                <button
+                  type="button"
+                  onClick={removeImage}
+                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                  disabled={isLoading}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
           </div>
 
           {response && (
@@ -146,7 +219,7 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
             </button>
             <button
               type="submit"
-              disabled={!inputText.trim() || isLoading}
+              disabled={(!inputText.trim() && !selectedImage) || isLoading}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
             >
               {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -162,6 +235,7 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
               <li>• "I subscribed to Spotify Premium, $9.99 per month, charged on the 10th"</li>
               <li>• "Add GitHub Pro subscription, account dev@company.com, $7 monthly, payment on 1st"</li>
               <li>• "Netflix Standard subscription, family account, $15.99 per month, payment on 15th"</li>
+              <li>• Upload a screenshot of your subscription email or billing page</li>
             </ul>
           </div>
         </div>

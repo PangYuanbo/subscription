@@ -4,6 +4,7 @@ from datetime import datetime
 from enum import Enum
 
 class BillingCycle(str, Enum):
+    weekly = "weekly"
     monthly = "monthly"
     yearly = "yearly"
 
@@ -60,6 +61,9 @@ class SubscriptionBase(BaseModel):
     trial_start_date: Optional[str] = None
     trial_end_date: Optional[str] = None
     trial_duration_days: Optional[int] = None
+    
+    # Auto-renewal settings
+    auto_pay: Optional[bool] = False
 
 class SubscriptionCreate(SubscriptionBase):
     service: Optional[ServiceBase] = None
@@ -76,6 +80,9 @@ class SubscriptionUpdate(BaseModel):
     trial_start_date: Optional[str] = None
     trial_end_date: Optional[str] = None
     trial_duration_days: Optional[int] = None
+    
+    # Auto-renewal settings
+    auto_pay: Optional[bool] = None
 
 class SubscriptionResponse(SubscriptionBase):
     id: str
@@ -105,6 +112,10 @@ class AnalyticsResponse(BaseModel):
 
 class NLPSubscriptionRequest(BaseModel):
     text: str
+
+class NLPMultimodalSubscriptionRequest(BaseModel):
+    text: str
+    image: str  # Base64 encoded image
 
 class NLPSubscriptionResponse(BaseModel):
     success: bool

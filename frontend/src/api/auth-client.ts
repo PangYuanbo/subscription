@@ -137,6 +137,14 @@ export const useAuthenticatedApi = () => {
         const response = await api.post('/subscriptions/nlp', { text });
         return response.data; // Return the full NLPSubscriptionResponse
       },
+
+      parseNLPWithImage: async (text: string, imageBase64: string) => {
+        const response = await api.post('/subscriptions/nlp-multimodal', { 
+          text, 
+          image: imageBase64 
+        });
+        return response.data; // Return the full NLPSubscriptionResponse
+      },
     },
 
     analytics: {

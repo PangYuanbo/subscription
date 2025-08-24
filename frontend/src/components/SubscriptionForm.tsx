@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ServiceAutocomplete from '@/components/ServiceAutocomplete';
 import AccountAutocomplete from '@/components/AccountAutocomplete';
+import IconUpload from '@/components/IconUpload';
 import { PREDEFINED_SERVICES } from '@/data/services';
 import { getCommonTrialDurations, calculateTrialEndDate } from '@/utils/trialUtils';
 import type { ServiceData } from '@/data/services';
@@ -41,9 +42,11 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
     is_trial: false,
     trial_start_date: '',
     trial_duration_days: 30,
+    auto_pay: false,
   });
   const [selectedService, setSelectedService] = useState<ServiceData | null>(null);
   const [customServiceName, setCustomServiceName] = useState('');
+  const [customIconUrl, setCustomIconUrl] = useState('');
 
   useEffect(() => {
     if (subscription) {
@@ -56,16 +59,19 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         is_trial: subscription.is_trial || false,
         trial_start_date: subscription.trial_start_date || '',
         trial_duration_days: subscription.trial_duration_days || 30,
+        auto_pay: subscription.auto_pay || false,
       });
       
       // Set selected service
       if (subscription.service_id === 'custom') {
         setSelectedService(null);
         setCustomServiceName(subscription.service?.name || '');
+        setCustomIconUrl(subscription.service?.icon_url || '');
       } else {
         const predefinedService = PREDEFINED_SERVICES.find(s => s.id === subscription.service_id);
         setSelectedService(predefinedService || null);
         setCustomServiceName('');
+        setCustomIconUrl('');
       }
     } else {
       setFormData({
@@ -77,9 +83,11 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         is_trial: false,
         trial_start_date: new Date().toISOString().split('T')[0],
         trial_duration_days: 30,
+        auto_pay: false,
       });
       setSelectedService(null);
       setCustomServiceName('');
+      setCustomIconUrl('');
     }
   }, [subscription]);
 
@@ -94,11 +102,13 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
       setSelectedService(null);
       setFormData({ ...formData, service_id: 'custom' });
       setCustomServiceName(customName);
+      // Keep custom icon when switching to custom service
     } else {
       // Clear selection
       setSelectedService(null);
       setFormData({ ...formData, service_id: '' });
       setCustomServiceName('');
+      setCustomIconUrl('');
     }
   };
 
@@ -122,6 +132,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         id: 'custom',
         name: customServiceName.trim(),
         category: 'Other',
+        icon_url: customIconUrl || undefined,
       };
     } else {
       service = selectedService || PREDEFINED_SERVICES.find(s => s.id === formData.service_id);
@@ -129,9 +140,14 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
     
     // Calculate monthly cost
     const costValue = parseFloat(formData.cost.toString()) || 0;
-    const monthly_cost = formData.billing_cycle === 'yearly' 
-      ? costValue / 12 
-      : costValue;
+    let monthly_cost: number;
+    if (formData.billing_cycle === 'yearly') {
+      monthly_cost = costValue / 12;
+    } else if (formData.billing_cycle === 'weekly') {
+      monthly_cost = costValue * 4.33; // Average weeks per month
+    } else {
+      monthly_cost = costValue;
+    }
 
     let submissionData: any = {
       ...formData,
@@ -178,6 +194,22 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
                 />
               </div>
             </div>
+
+            {/* Custom Icon Upload - only show for custom services */}
+            {formData.service_id === 'custom' && (
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right pt-2">
+                  Custom Icon
+                </Label>
+                <div className="col-span-3">
+                  <IconUpload
+                    value={customIconUrl}
+                    onChange={setCustomIconUrl}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="account" className="text-right">
                 Account
@@ -219,6 +251,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
                   setFormData({ ...formData, billing_cycle: e.target.value as BillingCycle })
                 }
               >
+                <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly</option>
               </select>
@@ -226,7 +259,8 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
 
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="cost" className="text-right">
-                {formData.billing_cycle === 'yearly' ? 'Annual Cost' : 'Monthly Cost'}
+                {formData.billing_cycle === 'yearly' ? 'Annual Cost' : 
+                 formData.billing_cycle === 'weekly' ? 'Weekly Cost' : 'Monthly Cost'}
               </Label>
               <div className="col-span-3 space-y-2">
                 <Input
@@ -237,12 +271,18 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, cost: e.target.value })
                   }
-                  placeholder={formData.billing_cycle === 'yearly' ? '99.99' : '9.99'}
+                  placeholder={formData.billing_cycle === 'yearly' ? '99.99' : 
+                              formData.billing_cycle === 'weekly' ? '2.99' : '9.99'}
                   required
                 />
-                {formData.billing_cycle === 'yearly' && formData.cost && parseFloat(formData.cost.toString()) > 0 && (
+                {((formData.billing_cycle === 'yearly' || formData.billing_cycle === 'weekly') && formData.cost && parseFloat(formData.cost.toString()) > 0) && (
                   <div className="text-xs text-gray-600">
-                    Monthly equivalent: ${(parseFloat(formData.cost.toString()) / 12).toFixed(2)}
+                    {formData.billing_cycle === 'yearly' && (
+                      <>Monthly equivalent: ${(parseFloat(formData.cost.toString()) / 12).toFixed(2)}</>
+                    )}
+                    {formData.billing_cycle === 'weekly' && (
+                      <>Monthly equivalent: ${(parseFloat(formData.cost.toString()) * 4.33).toFixed(2)}</>
+                    )}
                   </div>
                 )}
               </div>
@@ -319,6 +359,31 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
                 </div>
               </>
             )}
+
+            {/* Auto-pay settings */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">
+                Auto-Pay
+              </Label>
+              <div className="col-span-3">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.auto_pay}
+                    onChange={(e) =>
+                      setFormData({ ...formData, auto_pay: e.target.checked })
+                    }
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Automatically renew this subscription
+                  </span>
+                </label>
+                <div className="text-xs text-gray-500 mt-1">
+                  💡 With auto-pay enabled, this subscription will be automatically renewed on the payment date.
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>

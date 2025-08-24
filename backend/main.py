@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +9,9 @@ import os
 import jwt
 import httpx
 import uuid
+import base64
+from urllib.parse import urlparse
+import hashlib
 from dotenv import load_dotenv
 
 from database import get_db, init_db
@@ -21,6 +24,7 @@ from schemas import (
     ServiceResponse,
     AnalyticsResponse,
     NLPSubscriptionRequest,
+    NLPMultimodalSubscriptionRequest,
     NLPSubscriptionResponse
 )
 
@@ -266,6 +270,7 @@ async def get_subscriptions(
             trial_start_date=sub.trial_start_date.isoformat() if sub.trial_start_date else None,
             trial_end_date=sub.trial_end_date.isoformat() if sub.trial_end_date else None,
             trial_duration_days=sub.trial_duration_days,
+            auto_pay=sub.auto_pay,
             created_at=sub.created_at.isoformat() if sub.created_at else None,
             updated_at=sub.updated_at.isoformat() if sub.updated_at else None,
             service=ServiceResponse(
@@ -322,7 +327,8 @@ async def create_subscription(
         is_trial=subscription.is_trial,
         trial_start_date=datetime.fromisoformat(subscription.trial_start_date) if subscription.trial_start_date else None,
         trial_end_date=datetime.fromisoformat(subscription.trial_end_date) if subscription.trial_end_date else None,
-        trial_duration_days=subscription.trial_duration_days
+        trial_duration_days=subscription.trial_duration_days,
+        auto_pay=subscription.auto_pay
     )
     
     db.add(db_subscription)
@@ -346,6 +352,7 @@ async def create_subscription(
         trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
         trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
         trial_duration_days=db_subscription.trial_duration_days,
+        auto_pay=db_subscription.auto_pay,
         created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
         updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
         service=ServiceResponse(
@@ -429,6 +436,7 @@ async def update_subscription(
         trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
         trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
         trial_duration_days=db_subscription.trial_duration_days,
+        auto_pay=db_subscription.auto_pay,
         created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
         updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
         service=ServiceResponse(
@@ -596,6 +604,7 @@ async def create_subscription_from_nlp(
             trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
             trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
             trial_duration_days=db_subscription.trial_duration_days,
+            auto_pay=db_subscription.auto_pay,
             created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
             updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
             service=ServiceResponse(
@@ -620,6 +629,170 @@ async def create_subscription_from_nlp(
             message=f"Error processing request: {str(e)}",
             parsed_data=None
         )
+
+@app.post("/subscriptions/nlp-multimodal", response_model=NLPSubscriptionResponse)
+async def create_subscription_from_nlp_multimodal(
+    request: NLPMultimodalSubscriptionRequest,
+    db: AsyncSession = Depends(get_db),
+    user_info: dict = Depends(verify_jwt)
+):
+    try:
+        # Get or create user
+        current_user = await get_or_create_user(user_info, db)
+        
+        # Parse subscription with image
+        parsed_data = await openrouter_client.parse_subscription_text(request.text, request.image)
+        
+        if not parsed_data or not parsed_data.get("service_name"):
+            return NLPSubscriptionResponse(
+                success=False,
+                message="Unable to parse subscription information from image, please provide more details",
+                parsed_data=parsed_data
+            )
+        
+        if not parsed_data.get("monthly_cost"):
+            return NLPSubscriptionResponse(
+                success=False,
+                message="Unable to determine monthly cost from image, please specify the amount",
+                parsed_data=parsed_data
+            )
+        
+        # Create or get service
+        service_result = await db.execute(
+            select(Service).where(Service.name == parsed_data["service_name"])
+        )
+        service = service_result.scalar_one_or_none()
+        
+        if not service:
+            service = Service(
+                name=parsed_data["service_name"],
+                icon_url="",
+                category=parsed_data["service_category"]
+            )
+            db.add(service)
+            await db.flush()
+            await db.refresh(service)
+        
+        # Calculate trial dates if trial is present
+        trial_start_date = None
+        trial_end_date = None
+        if parsed_data.get("is_trial") and parsed_data.get("trial_duration_days", 0) > 0:
+            trial_start_date = datetime.now()
+            trial_end_date = trial_start_date + timedelta(days=parsed_data["trial_duration_days"])
+        
+        # Create subscription
+        db_subscription = Subscription(
+            user_id=current_user.id,  # Associate with current user
+            service_id=service.id,
+            account=parsed_data["account"],
+            payment_date=datetime.fromisoformat(parsed_data["payment_date"]),
+            cost=parsed_data["monthly_cost"],
+            billing_cycle="monthly",
+            monthly_cost=parsed_data["monthly_cost"],
+            is_trial=parsed_data.get("is_trial", False),
+            trial_start_date=trial_start_date,
+            trial_end_date=trial_end_date,
+            trial_duration_days=parsed_data.get("trial_duration_days", 0)
+        )
+        
+        db.add(db_subscription)
+        await db.commit()
+        await db.refresh(db_subscription)
+        
+        # Update user analytics cache
+        await calculate_and_cache_analytics(current_user, db)
+        await db.commit()
+        
+        subscription_response = SubscriptionResponse(
+            id=str(db_subscription.id),
+            user_id=str(db_subscription.user_id),
+            service_id=str(db_subscription.service_id),
+            account=db_subscription.account,
+            payment_date=db_subscription.payment_date.isoformat(),
+            cost=float(db_subscription.cost),
+            billing_cycle=db_subscription.billing_cycle,
+            monthly_cost=float(db_subscription.monthly_cost),
+            is_trial=db_subscription.is_trial,
+            trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
+            trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
+            trial_duration_days=db_subscription.trial_duration_days,
+            auto_pay=db_subscription.auto_pay,
+            created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
+            updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
+            service=ServiceResponse(
+                id=str(service.id),
+                name=service.name,
+                icon_url=service.icon_url,
+                category=service.category
+            )
+        )
+        
+        return NLPSubscriptionResponse(
+            success=True,
+            message="Subscription information extracted from image and added successfully",
+            subscription=subscription_response,
+            parsed_data=parsed_data
+        )
+        
+    except Exception as e:
+        print(f"Error creating subscription from NLP multimodal: {e}")
+        return NLPSubscriptionResponse(
+            success=False,
+            message=f"Error processing image and text: {str(e)}",
+            parsed_data=None
+        )
+
+@app.get("/fetch-icon")
+async def fetch_website_icon(url: str):
+    """Fetch favicon from a website URL"""
+    try:
+        # Parse and validate URL
+        if not url.startswith('http'):
+            url = f"https://{url}"
+        
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc
+        
+        if not domain:
+            raise HTTPException(status_code=400, detail="Invalid URL")
+        
+        # Try different favicon URLs
+        favicon_urls = [
+            f"https://{domain}/favicon.ico",
+            f"https://{domain}/favicon.png", 
+            f"https://{domain}/apple-touch-icon.png",
+            f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+        ]
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            for favicon_url in favicon_urls:
+                try:
+                    response = await client.get(favicon_url)
+                    if response.status_code == 200 and len(response.content) > 0:
+                        # Check if it's actually an image
+                        content_type = response.headers.get('content-type', '')
+                        if content_type.startswith('image/'):
+                            # Convert to base64 for frontend
+                            image_data = base64.b64encode(response.content).decode('utf-8')
+                            return {
+                                "success": True,
+                                "icon_url": f"data:{content_type};base64,{image_data}",
+                                "domain": domain
+                            }
+                except Exception:
+                    continue
+        
+        # If all attempts fail, return Google's favicon service as fallback
+        fallback_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+        return {
+            "success": True,
+            "icon_url": fallback_url,
+            "domain": domain
+        }
+        
+    except Exception as e:
+        print(f"Error fetching icon: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch icon")
 
 if __name__ == "__main__":
     import uvicorn

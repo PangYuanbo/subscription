@@ -1,7 +1,7 @@
 import httpx
 import json
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Union
 from datetime import datetime
 import re
 
@@ -17,14 +17,46 @@ class OpenRouterClient:
             "Content-Type": "application/json"
         }
     
-    async def parse_subscription_text(self, text: str) -> Optional[Dict]:
+    async def parse_subscription_text(self, text: str, image_base64: Optional[str] = None) -> Optional[Dict]:
         # Try pattern-based parsing first for common cases
         fallback_result = self._try_pattern_based_parsing(text)
         if fallback_result:
             return fallback_result
             
+        # Get current date for context
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        
         # If pattern-based parsing fails, try OpenRouter
-        prompt = f"""
+        if image_base64:
+            # Multimodal prompt for image + text
+            prompt = f"""
+Today's date is: {current_date}
+
+Please analyze the provided image and any accompanying text to extract subscription service information. Return JSON format with the following fields:
+- service_name: Service name
+- service_category: Service category (e.g., "Streaming", "Software", "Cloud", "Music", "Gaming", "Other")
+- account: Account information
+- monthly_cost: Monthly cost (number)
+- payment_date: Next payment date (YYYY-MM-DD format)
+- is_trial: Whether there is a trial period (true/false)
+- trial_duration_days: Trial period duration in days
+
+Notes:
+1. Look for subscription details, pricing, billing cycles, trial periods in the image
+2. If keywords like "free", "trial" are mentioned, set is_trial to true
+3. Use today's date ({current_date}) to calculate trial end dates and payment dates
+4. Monthly cost should be the regular cost after trial period
+5. If information is incomplete or cannot be parsed, use null for the respective fields
+
+Additional text context: {text}
+
+Return only JSON, no other explanation.
+"""
+        else:
+            # Text-only prompt
+            prompt = f"""
+Today's date is: {current_date}
+
 Parse the following natural language text into structured subscription service data. Return JSON format with the following fields:
 - service_name: Service name
 - service_category: Service category (e.g., "Streaming", "Software", "Cloud", "Music", "Gaming", "Other")
@@ -37,8 +69,9 @@ Parse the following natural language text into structured subscription service d
 Notes:
 1. If keywords like "free", "trial" are mentioned, set is_trial to true
 2. If "first few months free" is mentioned, calculate trial_duration_days accordingly
-3. Monthly cost should be the regular cost after trial period
-4. If information is incomplete or cannot be parsed, use null for the respective fields
+3. Use today's date ({current_date}) to calculate payment dates and trial periods
+4. Monthly cost should be the regular cost after trial period
+5. If information is incomplete or cannot be parsed, use null for the respective fields
 
 User input: {text}
 
@@ -47,14 +80,35 @@ Return only JSON, no other explanation.
         
         try:
             async with httpx.AsyncClient() as client:
+                # Prepare messages for multimodal or text-only request
+                messages = []
+                if image_base64:
+                    # Multimodal message with image
+                    messages.append({
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": image_base64
+                                }
+                            }
+                        ]
+                    })
+                else:
+                    # Text-only message
+                    messages.append({"role": "user", "content": prompt})
+                
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
                     headers=self.headers,
                     json={
-                        "model": "openai/gpt-3.5-turbo",
-                        "messages": [
-                            {"role": "user", "content": prompt}
-                        ],
+                        "model": "anthropic/claude-3.5-haiku",
+                        "messages": messages,
                         "temperature": 0.1,
                         "max_tokens": 500
                     },
