@@ -130,6 +130,41 @@ echo "const Chrome = () => null; Chrome.displayName = 'Chrome'; export default C
 2. 清除vite缓存：`rm -rf node_modules/.vite`
 3. 安装缺失的react-is依赖：`npm install react-is`
 
+### UI组件相关问题
+
+#### Select组件缺失
+**问题：** `Failed to resolve import "@/components/ui/select"`
+**原因：** shadcn-ui组件未正确安装
+**解决方案：**
+1. 手动创建Select组件文件 `src/components/ui/select.tsx`
+2. 安装依赖：`npm install @radix-ui/react-select`
+3. 重启开发服务器
+
+#### TypeScript类型检查错误
+**常见问题和解决方案：**
+1. **未使用变量警告**
+   - 使用 `@ts-ignore` 注释或移除未使用的变量
+   - 示例：`// @ts-ignore: totalDays used in setTotalDays call`
+
+2. **类型不匹配**
+   - MonthlySpending 使用 `projected` 而非 `total`
+   - Service 接口需要包含 `icon_source_url` 可选字段
+
+### 图标相关问题
+
+#### 图标加载失败
+**问题：** 外部URL图标无法加载
+**解决方案：**
+1. 提供URL和Base64两种存储模式供用户选择
+2. URL模式：只存储图标URL，动态加载
+3. Base64模式：将图标转换为Base64存储在数据库
+
+#### Windows Defender阻止文件
+**问题：** 某些图标文件被误报为威胁
+**解决方案：**
+1. 使用Base64编码避免文件系统问题
+2. 使用CDN或外部URL而非本地文件
+
 ## 调试和故障排除
 
 ### 白屏问题快速排查
@@ -156,10 +191,29 @@ npm run build
 npm run preview
 ```
 
+## 最新功能更新 (2025-08-24)
+
+### 1. 自动续费订阅过期提醒优化
+- 设置了 `auto_pay: true` 的订阅不会触发过期提醒弹窗
+- 修改文件：`frontend/src/utils/expirationUtils.ts`
+
+### 2. Monthly Spending Input UI全面升级
+- 采用内联编辑模式，单行独立编辑
+- 添加实时状态指示（Saved/Over/Pending）
+- 增加统计摘要卡片
+- 使用渐变背景和圆角卡片风格
+- 修改文件：`frontend/src/components/MonthlySpendingInput.tsx`
+
+### 3. 图标存储策略升级
+- 支持URL存储（动态获取）和Base64存储（缓存数据）
+- 新增 `icon_source_url` 字段记录图标来源
+- 三种输入方式：Website URL、Direct URL、Upload
+- 数据库模型更新：`backend/models.py`
+
 ## 性能优化建议
 
 ### Bundle大小优化
-当前JS bundle约888KB，可考虑：
+当前JS bundle约1037KB，可考虑：
 1. 动态导入大型组件
 2. 移除未使用的依赖
 3. 使用Rollup手动chunk配置

@@ -6,6 +6,7 @@ import NLPSubscriptionForm from '@/components/NLPSubscriptionForm';
 import Analytics from '@/components/Analytics';
 import TrialOverview from '@/components/TrialOverview';
 import ExpirationNotificationModal from '@/components/ExpirationNotificationModal';
+import { LoadingOverlay, LoadingSteps } from '@/components/ui/loading';
 import type { Subscription, Analytics as AnalyticsData, MonthlySpending } from '@/types';
 // import { subscriptionApi } from '@/api/client';
 import { useAuthenticatedApi } from '@/api/auth-client';
@@ -88,6 +89,12 @@ function App() {
   const [useApi, setUseApi] = useState(true);
   const [showExpirationModal, setShowExpirationModal] = useState(false);
   const [hasShownExpirationToday, setHasShownExpirationToday] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [loadingSteps, setLoadingSteps] = useState<Array<{
+    title: string;
+    status: 'pending' | 'loading' | 'completed' | 'error';
+    description?: string;
+  }>>([]);
   const { getUserData, setUserData } = useUserData();
   const { isAuthenticated, isLoading } = useAuth0();
   const authenticatedApi = useAuthenticatedApi();
@@ -112,19 +119,63 @@ function App() {
     });
     
     if (shouldUseApi) {
+      // Show loading animation for API calls
+      setIsLoadingData(true);
+      setLoadingSteps([
+        { title: "Connecting to database", status: 'loading', description: "Establishing secure connection" },
+        { title: "Loading subscriptions", status: 'pending', description: "Fetching your subscription data" },
+        { title: "Calculating analytics", status: 'pending', description: "Processing financial insights" },
+        { title: "Checking notifications", status: 'pending', description: "Scanning for important alerts" }
+      ]);
+
       try {
+        // Step 1: Connection established
+        setTimeout(() => {
+          setLoadingSteps(prev => prev.map((step, i) => 
+            i === 0 ? { ...step, status: 'completed' } :
+            i === 1 ? { ...step, status: 'loading' } : step
+          ));
+        }, 500);
+
         const [subs, analyticsData] = await Promise.all([
           authenticatedApi.subscriptions.getAll(),
           authenticatedApi.analytics.get(),
         ]);
+
+        // Step 2: Subscriptions loaded
+        setLoadingSteps(prev => prev.map((step, i) => 
+          i === 1 ? { ...step, status: 'completed' } :
+          i === 2 ? { ...step, status: 'loading' } : step
+        ));
+        
         setSubscriptions(subs);
         setAnalytics(analyticsData);
         
-        // Check for expiring subscriptions after loading data
+        // Step 3: Analytics calculated
+        setTimeout(() => {
+          setLoadingSteps(prev => prev.map((step, i) => 
+            i === 2 ? { ...step, status: 'completed' } :
+            i === 3 ? { ...step, status: 'loading' } : step
+          ));
+        }, 200);
+        
+        // Step 4: Check notifications
         checkExpiringSubscriptions(subs);
+        
+        setTimeout(() => {
+          setLoadingSteps(prev => prev.map(step => ({ ...step, status: 'completed' })));
+          setTimeout(() => setIsLoadingData(false), 500);
+        }, 400);
+
       } catch (error) {
         console.error('Failed to load data from API, using mock data', error);
-        loadMockData();
+        setLoadingSteps(prev => prev.map(step => 
+          step.status === 'loading' ? { ...step, status: 'error' } : step
+        ));
+        setTimeout(() => {
+          setIsLoadingData(false);
+          loadMockData();
+        }, 1000);
       }
     } else {
       loadMockData();
@@ -532,6 +583,11 @@ function App() {
         expiringSubscriptions={findExpiringSubscriptions(subscriptions, 7)}
         onRenewSubscription={handleRenewSubscription}
       />
+
+      {/* Loading Overlay */}
+      <LoadingOverlay isVisible={isLoadingData}>
+        <LoadingSteps steps={loadingSteps} className="max-w-md" />
+      </LoadingOverlay>
     </div>
   );
 }

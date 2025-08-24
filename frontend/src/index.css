@@ -1,3 +1,6 @@
+@import './styles/animations.css';
+@import './styles/loading-animations.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
