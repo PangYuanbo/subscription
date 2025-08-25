@@ -35,7 +35,7 @@ async def update_database():
         # Recreate all tables with updated schema
         print("Creating tables with new schema...")
         await conn.run_sync(Base.metadata.create_all)
-        print("✅ Database schema updated successfully!")
+        print("Database schema updated successfully!")
         
         # Verify the new schema
         result = await conn.execute(text("""
@@ -45,7 +45,7 @@ async def update_database():
             ORDER BY ordinal_position
         """))
         columns = result.fetchall()
-        print("\n📋 Subscriptions table columns:")
+        print("\nSubscriptions table columns:")
         for col_name, col_type in columns:
             print(f"  - {col_name}: {col_type}")
             
@@ -58,10 +58,10 @@ async def update_database():
             ORDER BY enumsortorder
         """))
         enum_values = [row[0] for row in result.fetchall()]
-        print(f"\n📋 BillingCycle enum values: {enum_values}")
+        print(f"\nBillingCycle enum values: {enum_values}")
     
     await engine.dispose()
-    print("\n🎉 Database update completed!")
+    print("\nDatabase update completed!")
 
 if __name__ == "__main__":
     asyncio.run(update_database())

@@ -1,5 +1,6 @@
 import modal
 
+# Updated CORS configuration for Vercel frontend compatibility
 app = modal.App("subscription-manager")
 
 image = modal.Image.debian_slim().pip_install_from_requirements("requirements.txt")
@@ -264,14 +265,14 @@ def fastapi_app():
                 name=user_info.get("name"),
                 picture=user_info.get("picture"),
                 nickname=user_info.get("nickname"),
-                last_login=datetime.now(timezone.utc)
+                last_login=datetime.utcnow()
             )
             db.add(user)
             await db.flush()
             await db.refresh(user)
         else:
             # Update last login
-            user.last_login = datetime.now(timezone.utc)
+            user.last_login = datetime.utcnow()
             await db.flush()
         
         return user
@@ -293,10 +294,23 @@ def fastapi_app():
     
     fastapi_app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=[
+            "https://subscription-seven-dun.vercel.app",
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "*"
+        ],
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "Accept",
+            "Origin",
+            "User-Agent",
+            "X-Requested-With",
+        ],
+        expose_headers=["*"],
     )
     
     @fastapi_app.on_event("startup")
@@ -306,6 +320,10 @@ def fastapi_app():
     @fastapi_app.get("/")
     async def root():
         return {"message": "Subscription Manager API", "status": "running"}
+    
+    @fastapi_app.options("/{path:path}")
+    async def options_handler(path: str):
+        return {"message": "OK"}
 
     @fastapi_app.get("/health")
     async def health_check():
@@ -398,10 +416,20 @@ def fastapi_app():
         # Get or create service first
         service = None
         if subscription.service_id:
-            service_result = await db.execute(
-                select(Service).where(Service.id == subscription.service_id)
-            )
-            service = service_result.scalar_one_or_none()
+            try:
+                # Try to convert to UUID and query by ID
+                import uuid
+                service_uuid = uuid.UUID(subscription.service_id)
+                service_result = await db.execute(
+                    select(Service).where(Service.id == service_uuid)
+                )
+                service = service_result.scalar_one_or_none()
+            except (ValueError, TypeError):
+                # If service_id is not a valid UUID, treat it as service name for lookup
+                service_result = await db.execute(
+                    select(Service).where(Service.name == subscription.service_id)
+                )
+                service = service_result.scalar_one_or_none()
         
         if not service:
             service = Service(
@@ -498,7 +526,7 @@ def fastapi_app():
         if subscription.auto_pay is not None:
             db_subscription.auto_pay = subscription.auto_pay
         
-        db_subscription.updated_at = datetime.now(timezone.utc)
+        db_subscription.updated_at = datetime.utcnow()
         
         await db.commit()
         await db.refresh(db_subscription)
