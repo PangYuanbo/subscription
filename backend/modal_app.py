@@ -416,16 +416,17 @@ def fastapi_app():
         # Get or create service first
         service = None
         if subscription.service_id:
+            # Check if service_id is a valid UUID format
+            import uuid
             try:
-                # Try to convert to UUID and query by ID
-                import uuid
                 service_uuid = uuid.UUID(subscription.service_id)
+                # Valid UUID - query by ID
                 service_result = await db.execute(
                     select(Service).where(Service.id == service_uuid)
                 )
                 service = service_result.scalar_one_or_none()
             except (ValueError, TypeError):
-                # If service_id is not a valid UUID, treat it as service name for lookup
+                # Not a valid UUID - treat as service name
                 service_result = await db.execute(
                     select(Service).where(Service.name == subscription.service_id)
                 )
@@ -480,6 +481,7 @@ def fastapi_app():
                 id=str(service.id),
                 name=service.name,
                 icon_url=service.icon_url,
+                icon_source_url=service.icon_source_url,
                 category=service.category
             ) if service else None
         )
@@ -555,6 +557,7 @@ def fastapi_app():
                 id=str(service.id),
                 name=service.name,
                 icon_url=service.icon_url,
+                icon_source_url=service.icon_source_url,
                 category=service.category
             ) if service else None
         )
@@ -799,6 +802,7 @@ def fastapi_app():
                     id=str(service.id),
                     name=service.name,
                     icon_url=service.icon_url,
+                    icon_source_url=service.icon_source_url,
                     category=service.category
                 )
             )
