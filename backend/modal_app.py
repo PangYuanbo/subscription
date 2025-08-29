@@ -381,7 +381,7 @@ def fastapi_app():
                 id=str(sub.id),
                 service_id=str(sub.service_id),
                 account=sub.account,
-                payment_date=sub.payment_date.isoformat(),
+                payment_date=sub.payment_date.isoformat() if sub.payment_date else None,
                 cost=float(sub.cost),
                 billing_cycle=sub.billing_cycle,
                 monthly_cost=float(sub.monthly_cost),
@@ -466,7 +466,7 @@ def fastapi_app():
             id=str(db_subscription.id),
             service_id=str(db_subscription.service_id),
             account=db_subscription.account,
-            payment_date=db_subscription.payment_date.isoformat(),
+            payment_date=db_subscription.payment_date.isoformat() if db_subscription.payment_date else None,
             cost=float(db_subscription.cost),
             billing_cycle=db_subscription.billing_cycle,
             monthly_cost=float(db_subscription.monthly_cost),
@@ -542,7 +542,7 @@ def fastapi_app():
             id=str(db_subscription.id),
             service_id=str(db_subscription.service_id),
             account=db_subscription.account,
-            payment_date=db_subscription.payment_date.isoformat(),
+            payment_date=db_subscription.payment_date.isoformat() if db_subscription.payment_date else None,
             cost=float(db_subscription.cost),
             billing_cycle=db_subscription.billing_cycle,
             monthly_cost=float(db_subscription.monthly_cost),
@@ -670,7 +670,8 @@ def fastapi_app():
                 "trial_duration_days": trial period days (if trial)
             }}
 
-            Notes:
+            IMPORTANT RULES:
+            - payment_date MUST be in exact YYYY-MM-DD format (e.g. "2025-01-10"), never use descriptive text
             - If no clear amount, set monthly_cost to null
             - If no clear account info, set account to empty string
             - Categories: Entertainment, Productivity, Development, Cloud, Design, etc.
@@ -725,6 +726,7 @@ def fastapi_app():
             current_user = await get_or_create_user(user_info, db)
             
             parsed_data = await openrouter_client.parse_subscription_text(request.text)
+            print(f"[NLP DEBUG v2.0] Raw parsed data: {parsed_data}")
             
             if not parsed_data or not parsed_data.get("service_name"):
                 return NLPSubscriptionResponse(
@@ -764,12 +766,29 @@ def fastapi_app():
                 trial_start_date = datetime.now()
                 trial_end_date = trial_start_date + timedelta(days=parsed_data["trial_duration_days"])
             
+            # Parse payment date - handle both ISO format and descriptive text
+            payment_date = None
+            print(f"[NLP DEBUG] Raw payment_date from AI: '{parsed_data.get('payment_date')}'")
+            try:
+                payment_date = datetime.fromisoformat(parsed_data["payment_date"])
+                print(f"[NLP DEBUG] Successfully parsed payment_date: {payment_date}")
+            except (ValueError, TypeError) as e:
+                print(f"[NLP DEBUG] Failed to parse payment_date: {e}")
+                print(f"[NLP DEBUG] Using fallback date logic")
+                # If parsing fails, use next month's 10th as default
+                current_date = datetime.now()
+                if current_date.month == 12:
+                    payment_date = datetime(current_date.year + 1, 1, 10)
+                else:
+                    payment_date = datetime(current_date.year, current_date.month + 1, 10)
+                print(f"[NLP DEBUG] Fallback payment_date: {payment_date}")
+            
             # Create subscription
             db_subscription = Subscription(
                 user_id=current_user.id,  # Associate with current user
                 service_id=service.id,
                 account=parsed_data["account"],
-                payment_date=datetime.fromisoformat(parsed_data["payment_date"]),
+                payment_date=payment_date,
                 cost=parsed_data["monthly_cost"],
                 billing_cycle="monthly",
                 monthly_cost=parsed_data["monthly_cost"],
@@ -782,30 +801,42 @@ def fastapi_app():
             db.add(db_subscription)
             await db.commit()
             await db.refresh(db_subscription)
+            print(f"[NLP DEBUG] Database commit successful")
             
-            subscription_response = SubscriptionResponse(
-                id=str(db_subscription.id),
-                service_id=str(db_subscription.service_id),
-                account=db_subscription.account,
-                payment_date=db_subscription.payment_date.isoformat(),
-                cost=float(db_subscription.cost),
-                billing_cycle=db_subscription.billing_cycle,
-                monthly_cost=float(db_subscription.monthly_cost),
-                is_trial=db_subscription.is_trial,
-                trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
-                trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
-                trial_duration_days=db_subscription.trial_duration_days,
-                auto_pay=db_subscription.auto_pay,
-                created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
-                updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
-                service=ServiceResponse(
-                    id=str(service.id),
-                    name=service.name,
-                    icon_url=service.icon_url,
-                    icon_source_url=service.icon_source_url,
-                    category=service.category
+            # Debug database values
+            print(f"[NLP DEBUG] db_subscription.payment_date: {db_subscription.payment_date}")
+            print(f"[NLP DEBUG] db_subscription.created_at: {db_subscription.created_at}")
+            print(f"[NLP DEBUG] db_subscription.updated_at: {db_subscription.updated_at}")
+            
+            try:
+                print(f"[NLP DEBUG] Building SubscriptionResponse...")
+                subscription_response = SubscriptionResponse(
+                    id=str(db_subscription.id),
+                    service_id=str(db_subscription.service_id),
+                    account=db_subscription.account,
+                    payment_date=db_subscription.payment_date.isoformat() if db_subscription.payment_date else None,
+                    cost=float(db_subscription.cost),
+                    billing_cycle=db_subscription.billing_cycle,
+                    monthly_cost=float(db_subscription.monthly_cost),
+                    is_trial=db_subscription.is_trial,
+                    trial_start_date=db_subscription.trial_start_date.isoformat() if db_subscription.trial_start_date else None,
+                    trial_end_date=db_subscription.trial_end_date.isoformat() if db_subscription.trial_end_date else None,
+                    trial_duration_days=db_subscription.trial_duration_days,
+                    auto_pay=db_subscription.auto_pay,
+                    created_at=db_subscription.created_at.isoformat() if db_subscription.created_at else None,
+                    updated_at=db_subscription.updated_at.isoformat() if db_subscription.updated_at else None,
+                    service=ServiceResponse(
+                        id=str(service.id),
+                        name=service.name,
+                        icon_url=service.icon_url,
+                        icon_source_url=service.icon_source_url,
+                        category=service.category
+                    )
                 )
-            )
+                print(f"[NLP DEBUG] SubscriptionResponse created successfully")
+            except Exception as resp_error:
+                print(f"[NLP DEBUG] Error building response: {resp_error}")
+                raise resp_error
             
             return NLPSubscriptionResponse(
                 success=True,
@@ -815,11 +846,14 @@ def fastapi_app():
             )
             
         except Exception as e:
-            print(f"Error creating subscription from NLP: {e}")
+            print(f"[NLP ERROR] Full error details: {e}")
+            print(f"[NLP ERROR] Error type: {type(e).__name__}")
+            import traceback
+            print(f"[NLP ERROR] Traceback: {traceback.format_exc()}")
             return NLPSubscriptionResponse(
                 success=False,
                 message=f"Error processing request: {str(e)}",
-                parsed_data=None
+                parsed_data=parsed_data if 'parsed_data' in locals() else None
             )
     
     @fastapi_app.get("/fetch-icon")

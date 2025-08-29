@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { X, MessageSquare, Loader2, CheckCircle, XCircle, Upload } from 'lucide-react';
 import { useAuthenticatedApi } from '@/api/auth-client';
+import type { Subscription } from '@/types';
 
 interface NLPSubscriptionFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newSubscription: Subscription) => void;
 }
 
 interface NLPResponse {
   success: boolean;
   message: string;
-  subscription?: any;
+  subscription?: Subscription;
   parsed_data?: any;
 }
 
@@ -64,9 +65,9 @@ export default function NLPSubscriptionForm({ isOpen, onClose, onSuccess }: NLPS
       
       setResponse(nlpResponse);
 
-      if (nlpResponse.success) {
+      if (nlpResponse.success && nlpResponse.subscription) {
         setTimeout(() => {
-          onSuccess();
+          onSuccess(nlpResponse.subscription!);
           handleClose();
         }, 2000);
       }

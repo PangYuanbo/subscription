@@ -272,8 +272,25 @@ function App() {
     setIsNLPFormOpen(true);
   };
 
-  const handleNLPSuccess = () => {
-    loadData();
+  const handleNLPSuccess = async (newSubscription: Subscription) => {
+    // 乐观更新：立即添加新订阅到UI
+    const optimisticSubs = [...subscriptions, newSubscription];
+    setSubscriptions(optimisticSubs);
+    calculateAnalytics(optimisticSubs);
+    
+    // 可选：在后台静默同步数据，但不显示加载状态
+    setTimeout(async () => {
+      try {
+        const [subs, analyticsData] = await Promise.all([
+          authenticatedApi.subscriptions.getAll(),
+          authenticatedApi.analytics.get(),
+        ]);
+        setSubscriptions(subs);
+        setAnalytics(analyticsData);
+      } catch (error) {
+        console.warn('Background sync failed, using optimistic data');
+      }
+    }, 1000);
   };
 
   const handleEditSubscription = (subscription: Subscription) => {
@@ -298,8 +315,7 @@ function App() {
         // 后台API调用
         try {
           await authenticatedApi.subscriptions.delete(id);
-          // API成功后重新加载数据确保同步
-          setTimeout(() => loadData(), 100);
+          // 删除成功，无需额外操作（已经乐观更新了）
         } catch (error) {
           console.error('Failed to delete subscription', error);
           // 出错时恢复删除的项目
@@ -347,12 +363,12 @@ function App() {
         // 后台API调用
         try {
           await authenticatedApi.subscriptions.update(editingSubscription.id, subscriptionData);
-          // API成功后重新加载最新数据
-          await loadData();
+          // 更新成功，无需额外操作（已经乐观更新了）
         } catch (error) {
           console.error('Failed to update subscription', error);
           // 出错时回滚到原始数据
-          await loadData();
+          setSubscriptions(subscriptions);
+          calculateAnalytics(subscriptions);
           alert('Failed to update subscription. Please try again.');
         }
       } else {
@@ -380,9 +396,6 @@ function App() {
           );
           setSubscriptions(finalSubs);
           calculateAnalytics(finalSubs);
-          
-          // 然后重新加载所有数据确保同步
-          setTimeout(() => loadData(), 100);
         } catch (error) {
           console.error('Failed to create subscription', error);
           // 出错时移除乐观添加的项目
@@ -450,12 +463,12 @@ function App() {
         await authenticatedApi.subscriptions.update(id, {
           payment_date: updatedPaymentDate
         });
-        // API成功后重新加载数据确保同步
-        setTimeout(() => loadData(), 100);
+        // 续费成功，无需额外操作（已经乐观更新了）
       } catch (error) {
         console.error('Failed to renew subscription', error);
         // 出错时回滚到原始数据
-        await loadData();
+        setSubscriptions(subscriptions);
+        calculateAnalytics(subscriptions);
         alert('Failed to renew subscription. Please try again.');
       }
     } else {
