@@ -376,7 +376,74 @@ engine = create_async_engine(
 3. **表结构变更：** 优先修改models.py，然后执行上述重建流程
 4. **数据备份：** Neon提供自动备份，重要变更前可手动创建分支
 
+## Modal部署流程 (2025-08-29)
+
+### 部署前准备
+1. **清理Unicode字符问题**
+   - 某些文件中的Unicode字符（如✓）会导致Windows系统编码错误
+   - 必须清理所有非ASCII字符，特别是checkmark字符
+   - 删除Python缓存文件避免编码问题
+
+2. **必要的前置检查**
+   ```bash
+   cd backend
+   # 检查Modal secrets配置
+   modal secret list
+   # 确认以下secrets存在：
+   # - neon-db-url
+   # - openrouter-api-key  
+   # - auth0-config
+   ```
+
+### 部署命令
+**⚠️ 重要：使用UTF-8编码环境变量避免Windows编码问题**
+
+```bash
+cd backend
+
+# 清理Python缓存文件（重要）
+find . -name "*.pyc" -delete
+find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+# 设置UTF-8编码并部署
+PYTHONIOENCODING=utf-8 modal deploy modal_app.py
+```
+
+### 部署验证
+```bash
+# 基础健康检查
+curl https://yuanbopang--subscription-manager-fastapi-app.modal.run/
+
+# 详细健康检查
+curl https://yuanbopang--subscription-manager-fastapi-app.modal.run/health
+
+# 验证认证保护（应该返回认证错误）
+curl https://yuanbopang--subscription-manager-fastapi-app.modal.run/subscriptions
+```
+
+### 常见问题解决
+
+#### 1. 编码错误 `'charmap' codec can't encode character '\u2713'`
+**原因：** Windows系统中的Unicode字符导致编码问题
+**解决：** 
+1. 清理所有✓字符，替换为ASCII等价字符
+2. 删除Python缓存文件
+3. 使用`PYTHONIOENCODING=utf-8`环境变量
+
+#### 2. Modal Warning版本问题
+**现象：** 提示Modal版本1.1.2有已知缺陷
+**解决：** 警告不影响部署功能，可以正常使用
+
+#### 3. 部署成功标识
+**成功输出：**
+```
+✓ Created objects.
+├── 🔨 Created mount
+└── 🔨 Created web function fastapi_app => https://...
+✓ App deployed in X.XXXs! 🎉
+```
+
 ---
 
-**最后更新：** 2025-08-23  
+**最后更新：** 2025-08-29  
 **重要提醒：** 修改Neon数据库表结构前，务必按照上述流程操作，避免数据类型冲突

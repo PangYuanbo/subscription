@@ -433,6 +433,9 @@ function App() {
     const subscription = subscriptions.find(sub => sub.id === id);
     if (!subscription) return;
     
+    // 保存原始状态用于错误回滚
+    const originalSubscriptions = [...subscriptions];
+    
     const newPaymentDate = new Date(subscription.payment_date);
     if (subscription.billing_cycle === 'yearly') {
       newPaymentDate.setFullYear(newPaymentDate.getFullYear() + 1);
@@ -460,15 +463,21 @@ function App() {
     if (shouldUseApi) {
       // 后台API调用
       try {
-        await authenticatedApi.subscriptions.update(id, {
+        const updatedSubscription = await authenticatedApi.subscriptions.update(id, {
           payment_date: updatedPaymentDate
         });
-        // 续费成功，无需额外操作（已经乐观更新了）
+        
+        // API成功后用真实数据更新
+        const finalSubs = subscriptions.map(sub => 
+          sub.id === id ? updatedSubscription : sub
+        );
+        setSubscriptions(finalSubs);
+        calculateAnalytics(finalSubs);
       } catch (error) {
         console.error('Failed to renew subscription', error);
         // 出错时回滚到原始数据
-        setSubscriptions(subscriptions);
-        calculateAnalytics(subscriptions);
+        setSubscriptions(originalSubscriptions);
+        calculateAnalytics(originalSubscriptions);
         alert('Failed to renew subscription. Please try again.');
       }
     } else {
