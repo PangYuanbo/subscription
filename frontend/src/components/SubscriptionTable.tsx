@@ -234,12 +234,18 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({
                       variant="ghost"
                       size="icon"
                       onClick={() => handleRenewClick(subscription.id)}
-                      title="Renew subscription"
+                      title={subscription.auto_pay ? "Disable auto-renew" : "Enable auto-renew"}
                       disabled={renewingIds.has(subscription.id)}
-                      className="h-8 w-8 hover:bg-green-50 hover:border-green-200 rounded-lg border border-transparent"
+                      className={`h-8 w-8 rounded-lg border ${
+                        subscription.auto_pay 
+                          ? 'bg-green-50 border-green-200 hover:bg-green-100' 
+                          : 'border-transparent hover:bg-green-50 hover:border-green-200'
+                      }`}
                     >
                       <RefreshCw 
-                        className={`h-4 w-4 text-green-600 transition-transform duration-300 ${
+                        className={`h-4 w-4 transition-transform duration-300 ${
+                          subscription.auto_pay ? 'text-green-700' : 'text-green-600'
+                        } ${
                           renewingIds.has(subscription.id) ? 'animate-spin' : ''
                         }`} 
                       />

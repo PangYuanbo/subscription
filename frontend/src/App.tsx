@@ -436,21 +436,37 @@ function App() {
     // 保存原始状态用于错误回滚
     const originalSubscriptions = [...subscriptions];
     
-    const newPaymentDate = new Date(subscription.payment_date);
-    if (subscription.billing_cycle === 'yearly') {
-      newPaymentDate.setFullYear(newPaymentDate.getFullYear() + 1);
-    } else {
-      newPaymentDate.setMonth(newPaymentDate.getMonth() + 1);
-    }
+    // Toggle auto_pay status
+    const newAutoPay = !subscription.auto_pay;
+    console.log('Current auto_pay:', subscription.auto_pay, 'New auto_pay:', newAutoPay);
     
-    const updatedPaymentDate = newPaymentDate.toISOString().split('T')[0];
+    // If enabling auto-pay, also update the payment date to the next renewal
+    let updatedPaymentDate = subscription.payment_date;
+    if (newAutoPay) {
+      const newPaymentDate = new Date(subscription.payment_date);
+      const today = new Date();
+      
+      // Only update payment date if it's in the past
+      if (newPaymentDate < today) {
+        if (subscription.billing_cycle === 'yearly') {
+          newPaymentDate.setFullYear(newPaymentDate.getFullYear() + 1);
+        } else if (subscription.billing_cycle === 'weekly') {
+          newPaymentDate.setDate(newPaymentDate.getDate() + 7);
+        } else {
+          newPaymentDate.setMonth(newPaymentDate.getMonth() + 1);
+        }
+        updatedPaymentDate = newPaymentDate.toISOString().split('T')[0];
+        console.log('Updated payment date from', subscription.payment_date, 'to', updatedPaymentDate);
+      }
+    }
     
     // 乐观更新：立即更新UI
     const optimisticSubs = subscriptions.map(sub => {
       if (sub.id === id) {
         return {
           ...sub,
-          payment_date: updatedPaymentDate
+          payment_date: updatedPaymentDate,
+          auto_pay: newAutoPay
         };
       }
       return sub;
@@ -458,14 +474,17 @@ function App() {
     
     setSubscriptions(optimisticSubs);
     calculateAnalytics(optimisticSubs);
-    console.log('Subscription renewed successfully');
+    console.log(`Auto-renew ${newAutoPay ? 'enabled' : 'disabled'} for subscription`);
     
     if (shouldUseApi) {
       // 后台API调用
       try {
-        const updatedSubscription = await authenticatedApi.subscriptions.update(id, {
-          payment_date: updatedPaymentDate
-        });
+        const updateData: any = { auto_pay: newAutoPay };
+        if (updatedPaymentDate !== subscription.payment_date) {
+          updateData.payment_date = updatedPaymentDate;
+        }
+        
+        const updatedSubscription = await authenticatedApi.subscriptions.update(id, updateData);
         
         // API成功后用真实数据更新
         const finalSubs = subscriptions.map(sub => 
@@ -474,11 +493,11 @@ function App() {
         setSubscriptions(finalSubs);
         calculateAnalytics(finalSubs);
       } catch (error) {
-        console.error('Failed to renew subscription', error);
+        console.error('Failed to toggle auto-renew', error);
         // 出错时回滚到原始数据
         setSubscriptions(originalSubscriptions);
         calculateAnalytics(originalSubscriptions);
-        alert('Failed to renew subscription. Please try again.');
+        alert('Failed to toggle auto-renew. Please try again.');
       }
     } else {
       // 本地存储模式

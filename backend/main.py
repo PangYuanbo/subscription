@@ -419,6 +419,8 @@ async def update_subscription(
         db_subscription.trial_end_date = datetime.fromisoformat(subscription.trial_end_date) if subscription.trial_end_date else None
     if subscription.trial_duration_days is not None:
         db_subscription.trial_duration_days = subscription.trial_duration_days
+    if subscription.auto_pay is not None:
+        db_subscription.auto_pay = subscription.auto_pay
     
     db_subscription.updated_at = datetime.now(timezone.utc)
     

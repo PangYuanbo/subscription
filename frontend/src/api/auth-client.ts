@@ -125,7 +125,9 @@ export const useAuthenticatedApi = () => {
         const backendData = {
           ...subscription,
         };
+        console.log('Updating subscription:', id, 'with data:', backendData);
         const response = await api.put(`/subscriptions/${id}`, backendData);
+        console.log('Update response:', response.data);
         return response.data;
       },
 
